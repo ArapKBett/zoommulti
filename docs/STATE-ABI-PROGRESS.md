@@ -82,8 +82,10 @@ Next ToTape9 work:
 
 1. Verify the parameter fallback change. Audio-side writes to `params[5..13]`
    were removed because the pedal can remember values across browsing/loading;
-   ToTape9 now treats the host parameter table as read-only and only uses
-   local fallback values when a slot reads as empty.
+   ToTape9 now treats the host parameter table as read-only. If all nine user
+   slots read empty it uses source defaults locally; after any slot is
+   materialized, zero is treated as a real saved value, while NaN/negative/
+   out-of-range values still fall back locally.
 2. Test whether saved presets and preset switches preserve edited values with
    the read-only fallback path.
 3. Add a desktop comparison harness before calling ToTape9 source-equivalent.

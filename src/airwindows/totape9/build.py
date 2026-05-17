@@ -57,7 +57,7 @@ def main() -> None:
         fxid_version=manifest.get("fxid_version", "1.00").encode("ascii"),
         flags_byte=manifest.get("flags_byte", 0x01),
         screen_image=make_airwindows_totape_screen(),
-        knob_positions=[(2, 14, 43), (3, 55, 43), (4, 96, 43)],
+        knob_positions=[(2, 14, 46), (3, 55, 46), (4, 96, 46)],
         audio_nop=manifest.get("audio_nop", False),
         # Input/Tilt use LineSel's stock handlers. Shape and pages 2/3 use
         # LineSel-cloned handlers with patched knob ids/param offsets.

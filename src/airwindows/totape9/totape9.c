@@ -247,11 +247,33 @@ static inline uintptr_t align4(uintptr_t x)
     return (x + 3u) & ~(uintptr_t)3u;
 }
 
-static inline float totape9_param_norm(float raw, float fallback_norm)
+static inline int totape9_param_slot_empty(float raw)
 {
-    if (raw <= 0.0001f) return zoom_clamp01(fallback_norm);
+    if (raw != raw) return 1;
+    return raw <= 0.0001f;
+}
+
+static inline int totape9_param_table_empty(const float *params)
+{
+    return totape9_param_slot_empty(params[TOTAPE9_INPUT_SLOT]) &&
+           totape9_param_slot_empty(params[TOTAPE9_TILT_SLOT]) &&
+           totape9_param_slot_empty(params[TOTAPE9_SHAPE_SLOT]) &&
+           totape9_param_slot_empty(params[TOTAPE9_FLUTTER_SLOT]) &&
+           totape9_param_slot_empty(params[TOTAPE9_FLUTSPD_SLOT]) &&
+           totape9_param_slot_empty(params[TOTAPE9_BIAS_SLOT]) &&
+           totape9_param_slot_empty(params[TOTAPE9_HEADBMP_SLOT]) &&
+           totape9_param_slot_empty(params[TOTAPE9_HEADFRQ_SLOT]) &&
+           totape9_param_slot_empty(params[TOTAPE9_OUTPUT_SLOT]);
+}
+
+static inline float totape9_param_norm(float raw, float fallback_norm, int table_empty)
+{
+    if (raw != raw) return zoom_clamp01(fallback_norm);
+    if (raw < 0.0f) return zoom_clamp01(fallback_norm);
+    if (raw <= 0.0001f) return table_empty ? zoom_clamp01(fallback_norm) : 0.0f;
     if (raw <= 1.0f) return zoom_clamp01(raw);
-    return zoom_clamp01(raw * 0.01f);
+    if (raw <= 100.0f) return zoom_clamp01(raw * 0.01f);
+    return zoom_clamp01(fallback_norm);
 }
 
 static inline void start_lazy_init(ToTape9State *st)
@@ -549,15 +571,16 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
     return;
 #endif
 
-    float pInput   = totape9_param_norm(params[TOTAPE9_INPUT_SLOT],   TOTAPE9_INPUT_DEFAULT_NORM);
-    float pTilt    = totape9_param_norm(params[TOTAPE9_TILT_SLOT],    TOTAPE9_TILT_DEFAULT_NORM);
-    float pShape   = totape9_param_norm(params[TOTAPE9_SHAPE_SLOT],   TOTAPE9_SHAPE_DEFAULT_NORM);
-    float pFlutter = totape9_param_norm(params[TOTAPE9_FLUTTER_SLOT], TOTAPE9_FLUTTER_DEFAULT_NORM);
-    float pFlutSpd = totape9_param_norm(params[TOTAPE9_FLUTSPD_SLOT], TOTAPE9_FLUTSPD_DEFAULT_NORM);
-    float pBias    = totape9_param_norm(params[TOTAPE9_BIAS_SLOT],    TOTAPE9_BIAS_DEFAULT_NORM);
-    float pHeadBmp = totape9_param_norm(params[TOTAPE9_HEADBMP_SLOT], TOTAPE9_HEADBMP_DEFAULT_NORM);
-    float pHeadFrq = totape9_param_norm(params[TOTAPE9_HEADFRQ_SLOT], TOTAPE9_HEADFRQ_DEFAULT_NORM);
-    float pOutput  = totape9_param_norm(params[TOTAPE9_OUTPUT_SLOT],  TOTAPE9_OUTPUT_DEFAULT_NORM);
+    int paramsEmpty = totape9_param_table_empty(params);
+    float pInput   = totape9_param_norm(params[TOTAPE9_INPUT_SLOT],   TOTAPE9_INPUT_DEFAULT_NORM, paramsEmpty);
+    float pTilt    = totape9_param_norm(params[TOTAPE9_TILT_SLOT],    TOTAPE9_TILT_DEFAULT_NORM, paramsEmpty);
+    float pShape   = totape9_param_norm(params[TOTAPE9_SHAPE_SLOT],   TOTAPE9_SHAPE_DEFAULT_NORM, paramsEmpty);
+    float pFlutter = totape9_param_norm(params[TOTAPE9_FLUTTER_SLOT], TOTAPE9_FLUTTER_DEFAULT_NORM, paramsEmpty);
+    float pFlutSpd = totape9_param_norm(params[TOTAPE9_FLUTSPD_SLOT], TOTAPE9_FLUTSPD_DEFAULT_NORM, paramsEmpty);
+    float pBias    = totape9_param_norm(params[TOTAPE9_BIAS_SLOT],    TOTAPE9_BIAS_DEFAULT_NORM, paramsEmpty);
+    float pHeadBmp = totape9_param_norm(params[TOTAPE9_HEADBMP_SLOT], TOTAPE9_HEADBMP_DEFAULT_NORM, paramsEmpty);
+    float pHeadFrq = totape9_param_norm(params[TOTAPE9_HEADFRQ_SLOT], TOTAPE9_HEADFRQ_DEFAULT_NORM, paramsEmpty);
+    float pOutput  = totape9_param_norm(params[TOTAPE9_OUTPUT_SLOT],  TOTAPE9_OUTPUT_DEFAULT_NORM, paramsEmpty);
 
     /* --- Derive algorithm parameters (matching ToTape9 formulas exactly)
      *     overallscale = 1.0 throughout                                  --- */
