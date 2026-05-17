@@ -132,8 +132,8 @@ inactive unless the host rate is ever proven different.
 
 ## Immediate Work Items
 
-1. Verify the read-only parameter fallback change and document whether
-   first-touch Bias/knob jumps and zero-output startup are fixed.
+1. Verify the page-granular read-only parameter fallback change and document
+   whether first-touch Bias/knob jumps and zero-output startup are fixed.
 2. Test ToTape9 saved preset and preset-switch behavior with the read-only
    fallback path.
 3. Build an isolated tiny-DSP page 2/3 parameter probe using synthesized
