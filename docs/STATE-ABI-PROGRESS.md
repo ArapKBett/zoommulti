@@ -80,11 +80,12 @@ Audio buffers are float32. The observed stock/custom-safe pattern processes
 
 Next ToTape9 work:
 
-1. Verify the parameter default seeding change. The first one-shot version could
-   mute if ctx[3] persisted while the host parameter table was zeroed; the
-   current guard also re-seeds when all nine user slots are empty.
-2. Test whether saved presets and preset switches preserve edited values or get
-   overwritten by the audio-side default seed.
+1. Verify the parameter fallback change. Audio-side writes to `params[5..13]`
+   were removed because the pedal can remember values across browsing/loading;
+   ToTape9 now treats the host parameter table as read-only and only uses
+   local fallback values when a slot reads as empty.
+2. Test whether saved presets and preset switches preserve edited values with
+   the read-only fallback path.
 3. Add a desktop comparison harness before calling ToTape9 source-equivalent.
 4. Separately build a tiny-DSP page 2/3 parameter probe using synthesized
    LineSel-cloned handlers to prove `params[7..13]` updates independently from
