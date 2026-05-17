@@ -85,6 +85,108 @@ def main() -> None:
         check=True,
         cwd=HERE,
     )
+    noinit_obj = HERE / "totape9_noinit.obj"
+    print(f"[totape9 variants] compiling {src_c.name} -> {noinit_obj.name} (TOTAPE9_SKIP_STATE_INIT)")
+    subprocess.run(
+        [
+            str(CL6X),
+            *CFLAGS,
+            "--define=TOTAPE9_SKIP_STATE_INIT",
+            "-c",
+            str(src_c),
+            f"--output_file={noinit_obj}",
+        ],
+        check=True,
+        cwd=HERE,
+    )
+    hdronly_obj = HERE / "totape9_hdronly.obj"
+    print(f"[totape9 variants] compiling {src_c.name} -> {hdronly_obj.name} (TOTAPE9_HEADER_ONLY)")
+    subprocess.run(
+        [
+            str(CL6X),
+            *CFLAGS,
+            "--define=TOTAPE9_HEADER_ONLY",
+            "-c",
+            str(src_c),
+            f"--output_file={hdronly_obj}",
+        ],
+        check=True,
+        cwd=HERE,
+    )
+    mod_obj = HERE / "totape9_mod.obj"
+    print(f"[totape9 variants] compiling {src_c.name} -> {mod_obj.name} (TOTAPE9_AUDIO_FUNC=Fx_MOD_ToTape9)")
+    subprocess.run(
+        [
+            str(CL6X),
+            *CFLAGS,
+            "--define=TOTAPE9_AUDIO_FUNC=Fx_MOD_ToTape9",
+            "-c",
+            str(src_c),
+            f"--output_file={mod_obj}",
+        ],
+        check=True,
+        cwd=HERE,
+    )
+    nostate_obj = HERE / "totape9_nostate.obj"
+    print(f"[totape9 variants] compiling {src_c.name} -> {nostate_obj.name} (TOTAPE9_FULL_DSP=0, Fx_MOD_ToTape9NoState)")
+    subprocess.run(
+        [
+            str(CL6X),
+            *CFLAGS,
+            "--define=TOTAPE9_FULL_DSP=0",
+            "--define=TOTAPE9_AUDIO_FUNC=Fx_MOD_ToTape9NoState",
+            "-c",
+            str(src_c),
+            f"--output_file={nostate_obj}",
+        ],
+        check=True,
+        cwd=HERE,
+    )
+    noloop_obj = HERE / "totape9_noloop.obj"
+    print(f"[totape9 variants] compiling {src_c.name} -> {noloop_obj.name} (TOTAPE9_DSP_NO_LOOP, Fx_MOD_ToTape9NoLoop)")
+    subprocess.run(
+        [
+            str(CL6X),
+            *CFLAGS,
+            "--define=TOTAPE9_DSP_NO_LOOP",
+            "--define=TOTAPE9_AUDIO_FUNC=Fx_MOD_ToTape9NoLoop",
+            "-c",
+            str(src_c),
+            f"--output_file={noloop_obj}",
+        ],
+        check=True,
+        cwd=HERE,
+    )
+    initonly_obj = HERE / "totape9_initonly.obj"
+    print(f"[totape9 variants] compiling {src_c.name} -> {initonly_obj.name} (TOTAPE9_INIT_ONLY, Fx_MOD_ToTape9Init)")
+    subprocess.run(
+        [
+            str(CL6X),
+            *CFLAGS,
+            "--define=TOTAPE9_INIT_ONLY",
+            "--define=TOTAPE9_AUDIO_FUNC=Fx_MOD_ToTape9Init",
+            "-c",
+            str(src_c),
+            f"--output_file={initonly_obj}",
+        ],
+        check=True,
+        cwd=HERE,
+    )
+    lite_obj = HERE / "totape9_lite.obj"
+    print(f"[totape9 variants] compiling {src_c.name} -> {lite_obj.name} (FLUTTER_BUF=64, Fx_MOD_ToTape9Lite)")
+    subprocess.run(
+        [
+            str(CL6X),
+            *CFLAGS,
+            "--define=FLUTTER_BUF=64",
+            "--define=TOTAPE9_AUDIO_FUNC=Fx_MOD_ToTape9Lite",
+            "-c",
+            str(src_c),
+            f"--output_file={lite_obj}",
+        ],
+        check=True,
+        cwd=HERE,
+    )
     print(f"[totape9 variants] compiling {tiny_src_c.name} -> {tiny_obj.name}")
     subprocess.run(
         [str(CL6X), *CFLAGS, "-c", str(tiny_src_c), f"--output_file={tiny_obj}"],
@@ -153,6 +255,10 @@ def main() -> None:
     )
     probe_manifest = dict(manifest)
     probe_manifest["audio_func_name"] = "Fx_FLT_ToTape9_ParamProbe"
+    # The tiny object does not export Fx_FLT_ToTape9_ParamProbe_*_edit symbols,
+    # so this falls back to LineSel/NOP handlers despite the object-handler
+    # request. It proves the 9-param descriptor + tiny DSP path, not the
+    # object-defined edit-handler ABI.
     build_one(
         probe_manifest,
         tiny_obj,
@@ -167,6 +273,108 @@ def main() -> None:
         effect_name="T9Meta",
         fxid=0x01A2,
         audio_nop=True,
+        use_object_edit_handlers=False,
+    )
+    # T9NoInit: same audio body as T9NoHand, but the state-init branch
+    # returns before touching the large ctx[3] state. This only proves the
+    # pre-init path can return cleanly; T9InitOnly later exonerated lazy
+    # state init itself.
+    build_one(
+        manifest,
+        noinit_obj,
+        effect_name="T9NoInit",
+        fxid=0x01A8,
+        audio_nop=False,
+        use_object_edit_handlers=False,
+    )
+    # T9Mod: same lazy-init source as T9NoHand, but built as gid=6 MOD with
+    # Fx_MOD_ToTape9 as the audio symbol. Early state-size suspicion is now
+    # lower priority because T9InitOnly proved the default-size lazy clear
+    # completes; keep this variant for category/symbol-shape comparisons.
+    mod_manifest = dict(manifest)
+    mod_manifest["gid"] = 6
+    mod_manifest["audio_func_name"] = "Fx_MOD_ToTape9"
+    build_one(
+        mod_manifest,
+        mod_obj,
+        effect_name="T9Mod",
+        fxid=0x01AA,
+        audio_nop=False,
+        use_object_edit_handlers=False,
+    )
+    # T9Lite: same lazy-init source, gid=6 MOD, but FLUTTER_BUF=64 so
+    # ToTape9State shrinks from ~8420 B to ~916 B. Kept as a small-state
+    # contrast, though the decisive T9InitOnly result means state size is
+    # not the active load-freeze suspect.
+    lite_manifest = dict(manifest)
+    lite_manifest["gid"] = 6
+    lite_manifest["audio_func_name"] = "Fx_MOD_ToTape9Lite"
+    build_one(
+        lite_manifest,
+        lite_obj,
+        effect_name="T9Lite",
+        fxid=0x01AB,
+        audio_nop=False,
+        use_object_edit_handlers=False,
+    )
+    # T9InitOnly: lazy init runs to completion (initialized=1), but the
+    # DSP body is skipped by TOTAPE9_INIT_ONLY. Hardware-confirmed clean:
+    # ctx[3] lazy clear/finalization is not the ToTape9 load killer.
+    initonly_manifest = dict(manifest)
+    initonly_manifest["gid"] = 6
+    initonly_manifest["audio_func_name"] = "Fx_MOD_ToTape9Init"
+    build_one(
+        initonly_manifest,
+        initonly_obj,
+        effect_name="T9InitOnly",
+        fxid=0x01AC,
+        audio_nop=False,
+        use_object_edit_handlers=False,
+    )
+    # T9DspNoLoop: runs derived-params + computeHDB (which uses tanf ->
+    # zoom_sinf inline math), but skips the 8-sample for-loop body
+    # (dubly encode/decode, flutter sinf, 9-stage slew, hysteresis,
+    # Taylor sat, head-bump biquads, ClipOnly3). If it loads, the
+    # for-loop body is the killer. If it freezes, computeHDB / derived
+    # params is the killer. Hardware result: freezes, so the active suspect
+    # is before the 8-sample loop.
+    noloop_manifest = dict(manifest)
+    noloop_manifest["gid"] = 6
+    noloop_manifest["audio_func_name"] = "Fx_MOD_ToTape9NoLoop"
+    build_one(
+        noloop_manifest,
+        noloop_obj,
+        effect_name="T9DspNoLoop",
+        fxid=0x01AD,
+        audio_nop=False,
+        use_object_edit_handlers=False,
+    )
+    # T9NoState: builds the stateless approximation path (TOTAPE9_FULL_DSP=0,
+    # source lines ~370-447). No ctx[3] use, no zoom_sinf/logf/tanf, no
+    # computeHDB, no divide. Pure multiplies + adds + Taylor sat with
+    # constant divisors that cl6x folds to multiplies. Hardware result:
+    # loads and audibly changes Input gain, confirming the full DSP body's
+    # helper-heavy math is the current blocker.
+    nostate_manifest = dict(manifest)
+    nostate_manifest["gid"] = 6
+    nostate_manifest["audio_func_name"] = "Fx_MOD_ToTape9NoState"
+    build_one(
+        nostate_manifest,
+        nostate_obj,
+        effect_name="T9NoState",
+        fxid=0x01AE,
+        audio_nop=False,
+        use_object_edit_handlers=False,
+    )
+    # T9HdrOnly: writes start_lazy_init's 16-byte header on first callback,
+    # then `return`s on every subsequent call without entering the chunked
+    # clear loop. Kept for regression checks around the ctx[3] header stamp.
+    build_one(
+        manifest,
+        hdronly_obj,
+        effect_name="T9HdrOnly",
+        fxid=0x01A9,
+        audio_nop=False,
         use_object_edit_handlers=False,
     )
 

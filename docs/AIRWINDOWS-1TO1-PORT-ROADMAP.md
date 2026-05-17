@@ -5,12 +5,11 @@ Date: 2026-05-13
 This is the practical plan for getting from safe ABI probes to real 1:1
 Airwindows ports.
 
-Current status update: `ctx[3]` is no longer just a lead. Hardware probes and
-the working `StereoChorus` release show it is a usable per-instance descriptor
-arena for large state. The next blocker is more specific: current `ToTape9`
-crashes on load with the full 9-parameter, synthesized-handler,
-helper-linking build shape. That must be split before we can judge the
-Airwindows tape kernel itself.
+Current status update: `ctx[3]` is no longer just a lead. Hardware probes, the
+working `StereoChorus` release, and `T9InitOnly` show it is a usable
+per-instance descriptor arena for large state. The next blocker is more
+specific: current `ToTape9` reaches the post-init DSP path, then crashes in the
+helper-heavy derived-parameter/`computeHDB` math before the 8-sample loop.
 
 ## What the TI PDFs Tell Us
 
@@ -133,15 +132,11 @@ inactive unless the host rate is ever proven different.
 
 ## Immediate Work Items
 
-1. Build a ToTape9 load-safety ladder:
-   * same 9-parameter descriptor/edit-handler shape with `audio_nop: true`;
-   * same UI shape with tiny pass-through DSP;
-   * reduced 2- or 3-parameter shell to isolate page 2/3 handlers;
-   * full DSP with divide/helper use removed or gated.
-2. Focus the first ToTape9 split on synthesized/edit-handler behavior. The
-   stock corpus contains many 9-parameter effects, and ToTape9's current
-   executable load size is within stock bounds, so parameter count and raw size
-   are less suspicious than handler shape or runtime helper use.
+1. Rewrite the ToTape9 derived-parameter and `computeHDB` path so the no-loop
+   probe has no runtime float division or fragile helper/call-stub dependency.
+2. Build an isolated tiny-DSP page 2/3 parameter probe using synthesized
+   LineSel-cloned edit handlers, so `params[7..13]` updates are proven
+   separately from the ToTape9 kernel.
 3. Add a desktop equivalence harness before calling ToTape9 1:1.
 4. Continue mapping `ctx[2]`, `ctx[13]`, and `ctx[14]` from stock delay,
    modulation, and tape effects.

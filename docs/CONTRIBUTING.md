@@ -2,18 +2,20 @@
 
 ## What this repo most needs (in priority order)
 
-1. **ToTape9 load-safety results.** The current full-kernel `ToTape9.ZDL`
-   crashes on load on the test MS-70CDR. The most useful reports now are
-   tightly split variants: same 9-parameter UI with `audio_nop: true`, same UI
-   with pass-through DSP, reduced 2- or 3-parameter shells, and no-divide DSP
-   builds.
+1. **ToTape9 helper-free DSP results.** The current full-kernel `ToTape9.ZDL`
+   crashes on load on the test MS-70CDR, but `T9InitOnly` proves ctx[3] lazy
+   init is safe and `T9NoState` proves a simple DSP path can run. The most useful
+   reports now are no-divide/no-call-stub splits of the derived-params and
+   `computeHDB` path, followed by gradual restoration of the 8-sample loop.
 
 2. **Hardware results for page 2/3 parameter handlers.** The linker can now
-   synthesize LineSel-cloned edit handlers for knobs 3..9, but the current
-   ToTape9 failure means this area still needs isolated confirmation. Report
-   whether 4+ knob builds load, render, and update `params[7..13]`.
+   synthesize LineSel-cloned edit handlers for knobs 3..9, but this area still
+   needs an isolated tiny-DSP confirmation. Report whether 4+ knob builds load,
+   render, and update `params[7..13]`.
 
-3. **A cleaner reloc-free knob 4-9 edit handler.** Every stock 9-knob effect
+3. **A cleaner reloc-free knob 4-9 edit handler.** The C/asm
+   `ZOOM_EDIT_HANDLER` macro freezes on knob/page interaction in `T9NoAudio`.
+   Every stock 9-knob effect
    (LO-FI Dly, etc.) has handlers tightly coupled to lookup tables that do not
    exist in our plugins. A compact hand-written or proven stock-derived handler
    would reduce the load-shape risk.

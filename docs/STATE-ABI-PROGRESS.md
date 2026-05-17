@@ -2047,17 +2047,13 @@ Hardware result:
   * external symbols: `__c6xabi_divf` and `__c6xabi_call_stub`.
   * `.fardata`: 0 bytes.
 
-Current inference:
+Current inference at that point:
 
-The crash happens before we can judge the audio kernel. Do not treat it as a
-failure of `ctx[3]` persistent state by itself. The next useful ToTape9 ladder
-is:
-
-1. Same manifest/descriptor/edit-handler shape with `audio_nop: true`.
-2. Same 9-parameter UI shape with tiny pass-through DSP.
-3. Reduced 2- or 3-parameter ToTape9 shell to isolate page 2/3 handlers.
-4. Full DSP with divide/helper use removed or gated, if the UI/load shape
-   survives.
+The crash happened before we could judge the audio kernel. It should not have
+been treated as a failure of `ctx[3]` persistent state by itself. Later
+2026-05-16/17 ladder results below refined this: the ctx[3] lazy init path is
+safe, and the active ToTape9 load crash is in helper-heavy DSP math before the
+8-sample loop.
 
 ## 2026-05-14: "Open-Source Coding Platform" Boundary
 
@@ -2079,8 +2075,9 @@ coding platform:
 2. Stereo declaration/routing control. Stock pedals already ship stereo
    effects, but the ZDL/ELF mechanism that marks or toggles "stereo" behavior
    for custom effects is still unknown.
-3. Clean edit-handler ABI for all parameter pages. The current `ToTape9`
-   failure may involve the 9-parameter synthesized-handler shape.
+3. Clean edit-handler ABI for all parameter pages. `T9NoAudio` proves the
+   object-defined macro path is unsafe on knob/page interaction, and synthesized
+   page 2/3 LineSel clones still need an isolated tiny-DSP audibility probe.
 4. Load-time limits: safe `.audio` size, descriptor count, relocation shape,
    helper symbols, category/SONAME combinations, and page 2/3 parameter limits.
 5. Known supported runtime subset: math helpers, divide, `double`, stack use,
@@ -2092,9 +2089,9 @@ coding platform:
 
 Concrete reverse-engineering targets:
 
-* Build the `ToTape9` load-crash ladder: same 9-param UI with `audio_nop`,
-  same UI with pass-through DSP, reduced parameter shells, then helper-free DSP
-  increments.
+* Continue the `ToTape9` DSP ladder: rewrite the derived-parameter/`computeHDB`
+  path without runtime division/helper surprises, then restore the 8-sample
+  loop in small tested increments.
 * Compare stock mono/stereo effects for header, descriptor, image info,
   category, and any ELF symbols/relocations that might declare stereo routing.
 * Compare stock 6-9 parameter effects, especially LO-FI Dly style handlers, to
@@ -2252,13 +2249,70 @@ Interpretation:
   parameters.
 * ToTape9's executable load segment is large for this repo but not beyond stock
   precedent.
-* The highest-value non-hardware split is now the edit-handler path: compare a
-  9-parameter ToTape9 shell using stock/NOP handlers, synthesized cloned
-  handlers, and object-defined handlers before blaming `ctx[3]` or the tape
-  DSP.
+* Later hardware splits cleared ctx[3] lazy init and narrowed the active
+  ToTape9 load crash to helper-heavy DSP math before the 8-sample loop.
+* The highest-value remaining UI split is a tiny-DSP page 2/3 parameter probe
+  using synthesized LineSel clones, because object-defined handlers already
+  freeze on interaction.
 
 Documentation correction:
 
 * `build/ABI.md` now treats descriptor flag `0x10` as a
   pedal/expression-assignable parameter marker, not an effect-level stereo
   flag.
+
+## 2026-05-16/17: ToTape9 Load-Crash Ladder, Hardware Results
+
+The `build_variants.py` ladder was flashed to the test MS-70CDR. The newer
+results supersede the first "state clear is the killer" interpretation.
+
+| Variant | Audio body | Edit handlers | Hardware result |
+|---|---|---|---|
+| `T9Tiny` | tiny pass-through (160 B) | LineSel first two + NOP rest | loads, no freeze |
+| `T9Param` | tiny param-probe (160 B) | requested object handlers, but tiny object exports no matching `_edit` symbols; falls back to LineSel/NOP | loads, no freeze |
+| `T9Meta` | full `.audio` (7,328 B), first 32 B NOPed | LineSel first two + NOP rest | loads, no freeze |
+| `T9NoAudio` | NOPed | object-defined `ZOOM_EDIT_HANDLER` symbols | loads, freezes on Tilt/Shape edit or page change |
+| `T9NoHand` | full ToTape9 DSP | LineSel first two + NOP rest | freeze on load, preview not drawn |
+| `T9NoInit` | full object, but returns before state init | LineSel first two + NOP rest | loads; DSP loop never enters |
+| `T9InitOnly` | lazy ctx[3] init/clear only, then returns forever | LineSel first two + NOP rest | loads; lazy init is exonerated |
+| `T9DspNoLoop` | derived params + `computeHDB`, skips 8-sample loop | LineSel first two + NOP rest | freezes |
+| `T9NoState` | stateless approximation, no ctx[3], no `zoom_sinf`/`zoom_logf`/`zoom_tanf`/`computeHDB`/divide | LineSel first two + NOP rest | loads; Input changes loudness, other controls weak/inaudible as expected |
+| `T9Stock3` | full ToTape9 DSP | AIR knob3 blob | freeze on load, preview not drawn |
+| `T9Page2` | full ToTape9 DSP | object-defined from knob 3 | freeze on load, preview not drawn |
+| `T9Synth` | full ToTape9 DSP | synthesized LineSel clones | same full-DSP risk; not independently cleared |
+
+Current conclusions:
+
+1. **ctx[3] state is not the current ToTape9 blocker.** `T9NoInit` only proved
+   that the pre-init path could return cleanly. The decisive follow-up is
+   `T9InitOnly`: it runs the same lazy clear/finalization sequence over the
+   default `FLUTTER_BUF=1002` state (~8.4 KB, chunked by 32 bytes over ~263
+   callbacks), flips `initialized=1`, and then returns forever. That means the
+   persistent state arena, header stamp, chunked clear, and final state defaults
+   are load-safe on the tested MS-70CDR.
+
+2. **The full-kernel load freeze is in the helper-heavy DSP math before the
+   8-sample loop body.** `T9DspNoLoop` skips dubly encode/decode, flutter,
+   9-stage slew, hysteresis, Taylor saturation, biquads in the sample loop, and
+   ClipOnly3, yet still freezes. What remains is parameter derivation plus two
+   `computeHDB` calls (`tanf` -> `zoom_sinf`) and helper-heavy arithmetic. The
+   closest safe contrast is `T9NoState`: simple scalar DSP loads and audibly
+   responds to Input. The fix should follow the StereoChorus playbook: remove
+   runtime float division, force simple inline approximations, and aim for no
+   unexpected external helper paths in the DSP object.
+
+3. **Object-defined edit handlers are a separate UI-interaction failure.**
+   `T9NoAudio` uses the C/asm-macro-generated `ZOOM_EDIT_HANDLER` symbols with
+   the audio body NOPed. It loads, then freezes when Tilt/Shape is edited or
+   when the UI paginates. This failure is independent of the full DSP crash.
+   `T9Param` is not counter-evidence, because `totape9_tiny.obj` exports no
+   matching `_edit` symbols; the linker falls back to LineSel/NOP handlers.
+
+Next work:
+
+* Rewrite the full ToTape9 derived-parameter/`computeHDB` path to avoid
+  `__c6xabi_divf` and fragile call-stub/codegen patterns, then rebuild a new
+  no-loop probe before restoring the sample loop.
+* Build an isolated page 2/3 parameter-audibility probe with tiny DSP and
+  synthesized LineSel-cloned handlers, so knob updates for `params[7..13]` can
+  be tested separately from the ToTape9 DSP body.

@@ -55,7 +55,13 @@
 #include "totape9_params.h"
 
 #define TOTAPE9_PERSISTENT_STATE 1
+#ifndef TOTAPE9_FULL_DSP
 #define TOTAPE9_FULL_DSP 1
+#endif
+
+#ifndef TOTAPE9_AUDIO_FUNC
+#define TOTAPE9_AUDIO_FUNC Fx_FLT_ToTape9
+#endif
 
 ZOOM_EDIT_HANDLER(Fx_FLT_ToTape9_Input_edit,   2, 20);
 ZOOM_EDIT_HANDLER(Fx_FLT_ToTape9_Tilt_edit,    3, 24);
@@ -140,7 +146,10 @@ static float zoom_tanf(float x)
 #define tanf(x) zoom_tanf(x)
 #endif
 
-#pragma CODE_SECTION(Fx_FLT_ToTape9, ".audio")
+#define TOTAPE9_DO_PRAGMA(x) _Pragma(#x)
+#define TOTAPE9_EXPAND_PRAGMA(x) TOTAPE9_DO_PRAGMA(x)
+#define TOTAPE9_CODE_SECTION(func) TOTAPE9_EXPAND_PRAGMA(CODE_SECTION(func, ".audio"))
+TOTAPE9_CODE_SECTION(TOTAPE9_AUDIO_FUNC)
 
 /*
  * On the TI C674x (32-bit target) sizeof(unsigned int) == sizeof(void*) == 4,
@@ -154,7 +163,9 @@ static float zoom_tanf(float x)
  * Constants
  * ---------------------------------------------------------------------- */
 
+#ifndef FLUTTER_BUF
 #define FLUTTER_BUF  1002
+#endif
 #define PHI          1.6180339887498948f
 #define KNOB_NORM    (1.0f / 0.14f)
 
@@ -186,9 +197,13 @@ static float zoom_tanf(float x)
  * Persistent state (single-instance)
  * ====================================================================== */
 
+#define TOTAPE9_CLEAR_STEP 32u
+
 typedef struct ToTape9State {
     uint32_t magic;
     uint32_t version;
+    uint32_t initialized;
+    uint32_t clearIndex;
 
     float iirEncL, iirEncR;
     float compEncL, compEncR;
@@ -239,26 +254,48 @@ static inline float totape9_param_norm(float raw, float fallback_norm)
     return zoom_clamp01(raw * 0.01f);
 }
 
-static void reset_totape9_state(ToTape9State *st)
+static inline void start_lazy_init(ToTape9State *st)
 {
-    int i;
-    unsigned char *p = (unsigned char *)st;
-    for (i = 0; i < (int)sizeof(ToTape9State); i++) {
-        p[i] = 0u;
-    }
-
+    /* Stamp the header so future callbacks see "init in progress". The full
+     * state zero is split across multiple callbacks to match the proven
+     * StereoChorus shape. T9InitOnly later confirmed this lazy ctx[3] init
+     * completes cleanly; the current ToTape9 blocker is in DSP math after
+     * initialization, not this state path. */
     st->magic = TOTAPE9_MAGIC;
     st->version = TOTAPE9_VERSION;
-    st->compEncL = 1.0f;
-    st->compEncR = 1.0f;
-    st->compDecL = 1.0f;
-    st->compDecR = 1.0f;
-    st->sweepL = 3.14159265359f;
-    st->sweepR = 3.14159265359f;
-    st->nextmaxL = 0.5f;
-    st->nextmaxR = 0.5f;
-    st->fpdL = 0x1234567u;
-    st->fpdR = 0x89ABCDFu;
+    st->initialized = 0u;
+    st->clearIndex = 16u;  /* skip the four header words just written */
+}
+
+static inline void clear_state_chunk(ToTape9State *st)
+{
+    /* Word-aligned stores. clearIndex starts at 16 and advances by
+     * TOTAPE9_CLEAR_STEP (both multiples of 4), so the cast is safe.
+     * Stock effects use word stores, and cl6x emits cleaner pipelined
+     * STW for this form than for byte-clearing a large state struct. */
+    uint32_t *w = (uint32_t *)(void *)st;
+    uint32_t startWord = st->clearIndex >> 2;
+    uint32_t endWord = startWord + (TOTAPE9_CLEAR_STEP >> 2);
+    uint32_t totalWords = (uint32_t)(sizeof(ToTape9State) >> 2);
+    if (endWord > totalWords) endWord = totalWords;
+    uint32_t i;
+    for (i = startWord; i < endWord; i++) {
+        w[i] = 0u;
+    }
+    st->clearIndex = endWord << 2;
+    if (endWord >= totalWords) {
+        st->compEncL = 1.0f;
+        st->compEncR = 1.0f;
+        st->compDecL = 1.0f;
+        st->compDecR = 1.0f;
+        st->sweepL = 3.14159265359f;
+        st->sweepR = 3.14159265359f;
+        st->nextmaxL = 0.5f;
+        st->nextmaxR = 0.5f;
+        st->fpdL = 0x1234567u;
+        st->fpdR = 0x89ABCDFu;
+        st->initialized = 1u;
+    }
 }
 
 #define iirEncL (st->iirEncL)
@@ -335,7 +372,7 @@ static void computeHDB(float *hdb, float normalizedFreq, float reso)
  *   ctx[12] – magic source      (read once per loop iteration)
  * ====================================================================== */
 
-void Fx_FLT_ToTape9(unsigned int *ctx)
+void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
 {
 #if !TOTAPE9_FULL_DSP
     float *params = ZDL_PTR(float *, ctx[1]);
@@ -482,8 +519,32 @@ void Fx_FLT_ToTape9(unsigned int *ctx)
 
     ToTape9State *st = (ToTape9State *)stateBase;
     if (st->magic != TOTAPE9_MAGIC || st->version != TOTAPE9_VERSION) {
-        reset_totape9_state(st);
+#ifdef TOTAPE9_SKIP_STATE_INIT
+        /* Diagnostic build: bail out without running any state init. */
+        return;
+#else
+        start_lazy_init(st);
+        return;
+#endif
     }
+    if (!st->initialized) {
+#ifdef TOTAPE9_HEADER_ONLY
+        /* Diagnostic build: header write happened in start_lazy_init, but
+         * never advance the chunked clear. Isolates the 16-byte header
+         * write from the 512-byte chunk loop on hardware. */
+        return;
+#else
+        clear_state_chunk(st);
+        return;
+#endif
+    }
+#ifdef TOTAPE9_INIT_ONLY
+    /* Diagnostic build: lazy init has completed (initialized==1) but the
+     * DSP body is skipped. Isolates "lazy init runs to completion" from
+     * "DSP body executes". If T9InitOnly loads while T9NoHand freezes,
+     * the freeze is in the DSP body, not the lazy clear. */
+    return;
+#endif
 
     float pInput   = totape9_param_norm(params[TOTAPE9_INPUT_SLOT],   TOTAPE9_INPUT_DEFAULT_NORM);
     float pTilt    = totape9_param_norm(params[TOTAPE9_TILT_SLOT],    TOTAPE9_TILT_DEFAULT_NORM);
@@ -548,6 +609,15 @@ void Fx_FLT_ToTape9(unsigned int *ctx)
     computeHDB(hdbB, hfB, reso);
 
     float outputGain = pOutput * 2.0f;
+
+#ifdef TOTAPE9_DSP_NO_LOOP
+    /* Diagnostic build: run derived-params + computeHDB (which uses tanf
+     * -> zoom_sinf), then return. Skips the 8-sample-pair processing loop
+     * including dubly encode/decode, flutter, biquads, Taylor sat,
+     * ClipOnly3. If T9DspNoLoop freezes, the freeze is in computeHDB or
+     * derived params. If it loads, the for-loop body is the killer. */
+    return;
+#endif
 
     /* --- Process 8 stereo sample-pairs --- */
     float *fxL = fxBuf;       /* samples 0-7  */

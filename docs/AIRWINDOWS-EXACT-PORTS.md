@@ -90,6 +90,8 @@ approximation, keeps `.fardata` at 0 bytes, and exposes all 9 Airwindows
 parameters.
 
 Hardware result: the current `dist/ToTape9.ZDL` crashes on load on the test
-MS-70CDR. Until that load-time failure is split, `ToTape9` must be described as
-a failing full-kernel probe. The next evidence needed is an audio-NOP build with
-the same 9-parameter descriptor/edit-handler shape.
+MS-70CDR. The split is now narrower: `T9InitOnly` proves the ctx[3] lazy
+state init completes cleanly, `T9DspNoLoop` freezes before the 8-sample loop,
+and `T9NoState` loads with a simple approximation. Until the helper-heavy
+derived-parameter/`computeHDB` path is rewritten and retested, `ToTape9` must
+be described as a failing full-kernel probe rather than a port.

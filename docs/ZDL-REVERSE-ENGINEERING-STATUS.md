@@ -77,13 +77,13 @@ This is not yet a final 1:1 claim: it still uses the Zoom float32 port and
 links `__c6xabi_divf`, which was the pre-test risk boundary.
 
 Latest ToTape9 hardware result: the current `dist/ToTape9.ZDL` crashes on load
-on the test MS-70CDR. That moves the immediate problem earlier than "does the
-full DSP sound right": the next split must isolate the load-time shape itself.
-Suspects are the 9-parameter descriptor/edit-handler arrangement, the seven
-synthesized LineSel-cloned edit handlers, linked helper symbols
-(`__c6xabi_divf` and call-stub support), or another loader constraint exposed
-by the larger `.audio`/handler image. Because the crash occurs on load, it is
-not yet evidence against the `ctx[3]` audio-state strategy by itself.
+on the test MS-70CDR, but the crash has been split further. `T9InitOnly` proves
+the ctx[3] lazy init/clear path completes cleanly. `T9DspNoLoop` still freezes,
+which puts the active DSP suspect before the 8-sample loop, in parameter
+derivation plus `computeHDB` (`zoom_tanf`/`zoom_sinf` and helper-heavy
+arithmetic). `T9NoState` loads and audibly changes Input gain, confirming a
+simple DSP path is viable. Separately, `T9NoAudio` shows the object-defined
+`ZOOM_EDIT_HANDLER` macro freezes on knob/page interaction.
 
 Public documentation note: after the repo was shared publicly, the README was
 rewritten to put `dist/` first as the download folder for release ZDLs, document
@@ -246,8 +246,9 @@ parameters. `STDELAY` uses the same 11-entry descriptor size that ToTape9 uses
 `ToTape9.ZDL` has a 13,440-byte executable load segment, below the largest
 stock executable load segment observed in the corpus (18,016 bytes). This
 makes "9 parameters" and raw executable size less likely as the load-crash
-root cause than synthesized edit handlers, helper/runtime shape, or a subtler
-descriptor/dynamic-symbol mismatch.
+root cause than helper/runtime shape or a subtler descriptor/dynamic-symbol
+mismatch. Later hardware splits further cleared ctx[3] lazy init and moved the
+active ToTape9 DSP suspect to helper-heavy math before the 8-sample loop.
 
 Stereo-routing follow-up: stock mono/stereo pairs such as `CHORUS`/`STCHO`,
 `DELAY`/`STDELAY`, and `GEQ`/`ST_G_GEQ` do not expose an obvious stereo flag in
@@ -311,7 +312,7 @@ The first item is mostly solved. The second is tractable for stateless or
 small-state plugins. The third is solved well enough for `StereoChorus` and is
 now a per-effect engineering constraint rather than the single global blocker.
 `ToTape9` shows the next hard boundary: a source-shaped state layout can still
-be unsafe if the loader/edit-handler/helper-symbol shape is too ambitious.
+be unsafe if the DSP object pulls in fragile helper/runtime code paths.
 
 ## Exact-Port Workflow
 
@@ -329,18 +330,20 @@ For each Airwindows plugin:
 
 Anything that skips step 7 is an experiment, not a port.
 
-For current `ToTape9` work, step 6 needs to be repeated with the exact same
-descriptor and edit-handler shape as the failing build. If audio-NOP still
-crashes, the bug is load/UI/linker shape. If audio-NOP loads, the split moves
-back into DSP helpers and kernel code.
+For current `ToTape9` work, step 7 is cleared far enough to proceed: ctx[3]
+lazy init is hardware-confirmed. The next split is inside step 5/8: rewrite the
+derived-parameter/`computeHDB` path without runtime division or fragile helper
+calls, then retest the no-loop probe before restoring the sample loop.
 
 ## Open Questions
 
 Highest priority:
 
-* Which part of the current `ToTape9` load shape crashes the pedal: 9
-  parameters, synthesized page 2/3 edit handlers, helper symbols, `.audio`
-  size, or some interaction between them?
+* Which exact operation in the current `ToTape9` derived-parameter/`computeHDB`
+  path crashes the pedal: runtime float division, `zoom_tanf`/`zoom_sinf`
+  codegen, `__c6xabi_call_stub`, or another helper/runtime pattern?
+* Do synthesized LineSel-cloned page 2/3 edit handlers update `params[7..13]`
+  correctly in an isolated tiny-DSP probe?
 * What are the remaining stock state/lifecycle semantics around `ctx[3]`:
   bypass, preset switching, duplicate instances, and reload behavior?
 * What exactly are `ctx[11]` and `ctx[12]`, and is the shuttle required once

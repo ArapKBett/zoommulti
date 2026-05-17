@@ -56,9 +56,12 @@ experiment, not a port.
 * Small statics compiled into `.bss` or B14/SBR-relative addressing.
 * New external `__c6xabi_*` helpers beyond the tiny set already handled by
   the linker.
-* Large all-at-once release shapes: 9 parameters, synthesized page 2/3 edit
-  handlers, helper symbols, and a full DSP kernel in the same first hardware
-  build. Current `ToTape9` crashes on load in this category.
+* Helper-heavy DSP paths in the first executable build. Current `ToTape9`
+  clears ctx[3] lazy init but freezes in the derived-parameter/`computeHDB`
+  path before the 8-sample loop; the safe contrast is the helper-light
+  `T9NoState` probe.
+* Object-defined C/asm `ZOOM_EDIT_HANDLER` symbols for multi-page UIs.
+  `T9NoAudio` loads with the DSP NOPed, then freezes on knob/page interaction.
 * Stock edit-handler blobs whose internal references were not cloned or
   patched for this plugin.
 * Category/SONAME mismatch, for example `gid=3` with `ZDL_MOD_...` or
@@ -77,5 +80,8 @@ For a new Airwindows port:
    algorithm in small patches.
 6. Use `ctx[3]` for full persistent delay/reverb/chorus buffers, validate its
    base/end/span fields before use, and initialize large memory lazily.
-7. Do not publish an Airwindows effect as a port until the source DSP is the
+7. Avoid the object-defined edit-handler macro for release ports until a compact
+   reloc-free page 2/3 handler is proven. Prefer isolated handler probes before
+   coupling a multi-page UI to a full DSP kernel.
+8. Do not publish an Airwindows effect as a port until the source DSP is the
    DSP being run.

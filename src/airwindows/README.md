@@ -65,22 +65,19 @@ scripts can call `write_param_header(...)` from
 `common/manifest_params.py` so DSP code gets generated slot/default/range
 defines from the same manifest.
 
-For ports with more than two controls, include
-`../common/zoom_edit_handlers.h` and define one `ZOOM_EDIT_HANDLER` per
-param:
-
-```c
-#include "../common/zoom_edit_handlers.h"
-
-ZOOM_EDIT_HANDLER(Fx_FLT_MyEffect_Gain_edit, 2, 20);  /* params[5] */
-ZOOM_EDIT_HANDLER(Fx_FLT_MyEffect_Tone_edit, 3, 24);  /* params[6] */
-ZOOM_EDIT_HANDLER(Fx_FLT_MyEffect_Mix_edit,  4, 28);  /* params[7] */
-```
+For ports with more than two controls, do not use
+`../common/zoom_edit_handlers.h` as the release path yet. The
+`ZOOM_EDIT_HANDLER` macro is useful as a diagnostic object-defined handler, but
+`T9NoAudio` hardware-tested as load-safe only until knob/page interaction, then
+froze. The current safer path is to let the linker use the stock LineSel first
+two handlers and, for experimental page 2/3 controls, set
+`synthesize_linesel_edit_handlers=True` in a tiny-DSP probe before coupling
+those controls to a full kernel.
 
 Keep writable `.fardata` tiny. The linker rejects large writable images by
 default because big static state has frozen real pedals during load. For large
 stateful ports, use the proven `ctx[3]` descriptor arena and validate the
-descriptor before touching memory. `StereoChorus` proves this can work, but
-`ToTape9` currently crashes on load, so new full-kernel ports still need a
-load-safety ladder: audio-NOP with the final UI shape, tiny pass-through DSP,
-then helper-free DSP increments.
+descriptor before touching memory. `StereoChorus` and `T9InitOnly` prove this
+can work, but `ToTape9` currently crashes once the helper-heavy full DSP path
+runs, so new full-kernel ports still need a load-safety ladder: audio-NOP with
+the final UI shape, tiny pass-through DSP, then helper-free DSP increments.
