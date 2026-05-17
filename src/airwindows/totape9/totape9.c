@@ -545,8 +545,6 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
     unsigned int *magicSrc = ZDL_PTR(unsigned int *, ctx[12]);
     *magicDst = *magicSrc;
 
-    if (params[0] < 0.5f) return;
-
     volatile unsigned int *desc = ZDL_PTR(volatile unsigned int *, ctx[3]);
     if (!desc) return;
 
@@ -594,6 +592,14 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
     int page1Empty = totape9_param_page_empty(params, TOTAPE9_INPUT_SLOT, TOTAPE9_TILT_SLOT, TOTAPE9_SHAPE_SLOT);
     int page2Empty = totape9_param_page_empty(params, TOTAPE9_FLUTTER_SLOT, TOTAPE9_FLUTSPD_SLOT, TOTAPE9_BIAS_SLOT);
     int page3Empty = totape9_param_page_empty(params, TOTAPE9_HEADBMP_SLOT, TOTAPE9_HEADFRQ_SLOT, TOTAPE9_OUTPUT_SLOT);
+    int criticalEmpty = totape9_param_slot_empty(params[TOTAPE9_INPUT_SLOT]) ||
+                        totape9_param_slot_empty(params[TOTAPE9_BIAS_SLOT]) ||
+                        totape9_param_slot_empty(params[TOTAPE9_OUTPUT_SLOT]);
+    /* During reload the host can briefly expose zeroed user slots before an
+     * edit interaction materializes them. In that state params[0] can also
+     * read like "off", causing a hard mute. Trust the off gate only once the
+     * mute-prone controls are present. */
+    if (params[0] < 0.5f && !criticalEmpty) return;
     float pInput   = totape9_param_norm_cached(params[TOTAPE9_INPUT_SLOT], TOTAPE9_INPUT_DEFAULT_NORM, &st->cachedInput, st->criticalParamCacheReady);
     float pTilt    = totape9_param_norm(params[TOTAPE9_TILT_SLOT],    TOTAPE9_TILT_DEFAULT_NORM, page1Empty);
     float pShape   = totape9_param_norm(params[TOTAPE9_SHAPE_SLOT],   TOTAPE9_SHAPE_DEFAULT_NORM, page1Empty);
