@@ -78,6 +78,6 @@ Keep writable `.fardata` tiny. The linker rejects large writable images by
 default because big static state has frozen real pedals during load. For large
 stateful ports, use the proven `ctx[3]` descriptor arena and validate the
 descriptor before touching memory. `StereoChorus` and `T9InitOnly` prove this
-can work, but `ToTape9` currently crashes once the helper-heavy full DSP path
-runs, so new full-kernel ports still need a load-safety ladder: audio-NOP with
-the final UI shape, tiny pass-through DSP, then helper-free DSP increments.
+can work. `ToTape9` is now a no-divide full-kernel retest candidate, so new
+full-kernel ports still need the same load-safety ladder: audio-NOP with the
+final UI shape, tiny pass-through DSP, then helper-free DSP increments.

@@ -61,9 +61,9 @@ effect directory conventions are summarized in
 
 - Only the Zoom MS-70CDR firmware 2.10 has been tested seriously so far.
 - Experimental builds can freeze or crash the pedal until it is power-cycled.
-- `ToTape9.ZDL` currently crashes on load on the test MS-70CDR. The latest
-  split clears ctx[3] lazy init and points at helper-heavy derived-parameter
-  math before the 8-sample loop.
+- `ToTape9.ZDL` is still experimental. The latest source removes runtime
+  `__c6xabi_divf` from the full DSP path after the previous hardware split
+  cleared ctx[3] lazy init as the crash cause.
 - Parameter scaling is part of the porting work. A port should not be called
   source-equivalent until its raw knob ranges have been confirmed on hardware.
 - These are `.ZDL` builds, not `.ZD2` builds.

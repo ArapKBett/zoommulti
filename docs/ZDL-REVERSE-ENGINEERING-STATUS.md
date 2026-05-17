@@ -24,8 +24,8 @@ What is working:
 What is still experimental:
 
 * `dist/ToTape9.ZDL` is not a finished port. `T9InitOnly` proves its ctx[3] lazy
-  state init is safe, but the full build still crashes in helper-heavy DSP math
-  before the 8-sample loop.
+  state init is safe. The current source has removed runtime `__c6xabi_divf`
+  from the full DSP path and now needs hardware retest.
 * Multi-page parameter editing is not a clean SDK contract yet. Stock LineSel
   handlers are useful for the first two knobs; object-defined
   `ZOOM_EDIT_HANDLER` freezes on interaction in `T9NoAudio`; synthesized
@@ -111,14 +111,13 @@ A build is not a 1:1 Airwindows port until all of these are true:
    audio output.
 
 `StereoChorus` is the best current reference. `ToTape9` shows the next boundary:
-state can be correct while the DSP object still crashes due to helper/runtime
-codegen patterns.
+state can be correct while the DSP object still needs careful helper/runtime
+codegen control.
 
 ## Highest-Priority Open Questions
 
-* Which exact ToTape9 derived-parameter/`computeHDB` operation crashes the
-  pedal: runtime float division, `zoom_tanf`/`zoom_sinf` codegen,
-  `__c6xabi_call_stub`, or another helper/runtime pattern?
+* Does the current no-divide `ToTape9.ZDL` load on hardware? If not, does the
+  rebuilt no-divide `T9DspNoLoop.ZDL` load?
 * Do synthesized LineSel-cloned page 2/3 edit handlers update `params[7..13]`
   correctly in an isolated tiny-DSP probe?
 * What declares stock-style stereo routing for custom effects?

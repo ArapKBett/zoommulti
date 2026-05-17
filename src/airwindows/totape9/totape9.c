@@ -82,39 +82,51 @@ ZOOM_EDIT_HANDLER(Fx_FLT_ToTape9_Output_edit, 10, 52);
  * lightweight inline versions here so the compiler folds them into the
  * .audio section and no external symbol reference is generated.
  *
- * __c6xabi_divf (float divide) IS available – we extract it from stock
- * ZDL binaries where it's statically linked.  So the `/` operator is fine.
+ * __c6xabi_divf (float divide) can be linked, but hardware has repeatedly
+ * shown helper-heavy DSP paths are fragile. Keep runtime math multiply-only
+ * unless a specific helper call has been isolated and hardware-tested.
  *
  * Accuracy targets:  ~20-bit mantissa (sufficient for audio, IEEE single
  * has 24-bit mantissa).  These are NOT fully IEEE-754 compliant – no
  * special-case handling for NaN/Inf/denormals.
  * ====================================================================== */
 
-/* --- sinf: Bhaskara I approximation, max error ~0.0016 --------------- */
-static float zoom_sinf(float x)
+static inline float recip_approx_pos(float x)
 {
-    /* Reduce x to [0, 2*pi) */
+    union { float f; uint32_t u; } conv;
+    conv.f = x;
+    conv.u = 0x7EF311C3u - conv.u;
+    float y = conv.f;
+    y = y * (2.0f - x * y);
+    y = y * (2.0f - x * y);
+    return y;
+}
+
+/* --- sinf: no-divide polynomial approximation ------------------------ */
+static inline float zoom_sinf(float x)
+{
     const float TWO_PI  = 6.2831853f;
     const float PI      = 3.1415927f;
     const float INV_2PI = 0.15915494f;
 
-    /* Range reduction: x = x mod 2*pi, result in [0, 2*pi) */
     x = x - TWO_PI * (float)(int)(x * INV_2PI);
     if (x < 0.0f) x += TWO_PI;
-
-    /* Use symmetry to map to [0, pi] */
     float sign = 1.0f;
     if (x > PI) { x -= PI; sign = -1.0f; }
+    if (x > 1.5707963f) x = PI - x;
 
-    /* Bhaskara I: sin(x) ≈ 16x(pi-x) / (5*pi^2 - 4x(pi-x))
-       Max error ~0.0016 over [0, pi] */
-    float pmx = PI - x;
-    float xpmx = x * pmx;
-    return sign * (16.0f * xpmx) / (49.348f - 4.0f * xpmx);
+    float x2 = x * x;
+    float p = x;
+    p -= x * x2 * 0.16666667f;
+    x *= x2;
+    p += x * x2 * 0.0083333310f;
+    x *= x2;
+    p -= x * x2 * 0.0001984090f;
+    return sign * p;
 }
 
 /* --- logf: bit-hack + polynomial correction -------------------------- */
-static float zoom_logf(float x)
+static inline float zoom_logf(float x)
 {
     /* Fast log2 via IEEE 754 float bit layout + correction polynomial.
        log(x) = log2(x) * ln(2) */
@@ -132,12 +144,11 @@ static float zoom_logf(float x)
     return ((float)exp + log2_m) * 0.6931472f;
 }
 
-/* --- tanf: sin/cos via paired Bhaskara ------------------------------- */
-static float zoom_tanf(float x)
+/* --- tanf: small-angle polynomial for ToTape9 head-bump frequencies --- */
+static inline float zoom_tanf(float x)
 {
-    /* tan(x) = sin(x) / cos(x) */
-    const float HALF_PI = 1.5707963f;
-    return zoom_sinf(x) / zoom_sinf(x + HALF_PI);
+    float x2 = x * x;
+    return x + x * x2 * 0.33333334f + x * x2 * x2 * 0.13333334f;
 }
 
 /* Redirect standard names */
@@ -347,17 +358,20 @@ static inline void clear_state_chunk(ToTape9State *st)
  * ====================================================================== */
 
 #if TOTAPE9_FULL_DSP
-static void computeHDB(float *hdb, float normalizedFreq, float reso)
+static inline void computeHDB(float *hdb, float normalizedFreq, float reso)
 {
     hdb[HDB_FREQ] = normalizedFreq;
     hdb[HDB_RESO] = reso;
     hdb[HDB_A1]   = 0.0f;
-    float K    = tanf(3.14159265358979323f * normalizedFreq);
-    float norm = 1.0f / (1.0f + K / reso + K * K);
-    hdb[HDB_A0] =  K / reso * norm;
+    float K = tanf(3.14159265358979323f * normalizedFreq);
+    float invReso = recip_approx_pos(reso);
+    float KOverReso = K * invReso;
+    float KK = K * K;
+    float norm = recip_approx_pos(1.0f + KOverReso + KK);
+    hdb[HDB_A0] =  KOverReso * norm;
     hdb[HDB_A2] = -hdb[HDB_A0];
-    hdb[HDB_B1] =  2.0f * (K * K - 1.0f) * norm;
-    hdb[HDB_B2] =  (1.0f - K / reso + K * K) * norm;
+    hdb[HDB_B1] =  2.0f * (KK - 1.0f) * norm;
+    hdb[HDB_B2] =  (1.0f - KOverReso + KK) * norm;
 }
 #endif
 
@@ -602,7 +616,7 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
     float headBumpMix   = pHeadBmp * 0.5f;
 
     /* HeadFrq: H^2 maps 0-1 to 25-200 Hz, normalised by 44100 */
-    float hfA = (25.0f + pHeadFrq * pHeadFrq * 175.0f) / 44100.0f;
+    float hfA = (25.0f + pHeadFrq * pHeadFrq * 175.0f) * 0.000022675737f;
     float hfB = hfA * 0.9375f;
     float reso = 0.6180339887498948f;
     computeHDB(hdbA, hfA, reso);
@@ -644,8 +658,8 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
             if (hpL < -1.0f) hpL = -1.0f;
             float dubL = hpL < 0.0f ? -hpL : hpL;
             if (dubL > 0.0f) {
-                float adj = logf(1.0f + 255.0f * dubL) / 2.40823996531f;
-                if (adj > 0.0f) dubL /= adj;
+                float adj = logf(1.0f + 255.0f * dubL) * 0.41524199f;
+                if (adj > 0.0f) dubL *= recip_approx_pos(adj);
                 compEncL = compEncL * (1.0f - iirEncFreq) + dubL * iirEncFreq;
                 sL += hpL * compEncL * dublyAmount;
             }
@@ -657,8 +671,8 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
             if (hpR < -1.0f) hpR = -1.0f;
             float dubR = hpR < 0.0f ? -hpR : hpR;
             if (dubR > 0.0f) {
-                float adj = logf(1.0f + 255.0f * dubR) / 2.40823996531f;
-                if (adj > 0.0f) dubR /= adj;
+                float adj = logf(1.0f + 255.0f * dubR) * 0.41524199f;
+                if (adj > 0.0f) dubR *= recip_approx_pos(adj);
                 compEncR = compEncR * (1.0f - iirEncFreq) + dubR * iirEncFreq;
                 sR += hpR * compEncR * dublyAmount;
             }
@@ -718,15 +732,15 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
 
                 if (underBias > 0.0f) {
                     float stuck;
-                    stuck = (sL - gslew[x]   / 0.975f);
+                    stuck = (sL - gslew[x]   * 1.02564103f);
                     if (stuck < 0.0f) stuck = -stuck;
-                    stuck /= underBias;
-                    if (stuck < 1.0f) sL = sL * stuck + (gslew[x]   / 0.975f) * (1.0f - stuck);
+                    stuck *= recip_approx_pos(underBias);
+                    if (stuck < 1.0f) sL = sL * stuck + (gslew[x]   * 1.02564103f) * (1.0f - stuck);
 
-                    stuck = (sR - gslew[x+1] / 0.975f);
+                    stuck = (sR - gslew[x+1] * 1.02564103f);
                     if (stuck < 0.0f) stuck = -stuck;
-                    stuck /= underBias;
-                    if (stuck < 1.0f) sR = sR * stuck + (gslew[x+1] / 0.975f) * (1.0f - stuck);
+                    stuck *= recip_approx_pos(underBias);
+                    if (stuck < 1.0f) sR = sR * stuck + (gslew[x+1] * 1.02564103f) * (1.0f - stuck);
                 }
 
                 if ((sL - gslew[x])   >  thr) sL = gslew[x]   + thr;
@@ -796,22 +810,22 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
             if (sL < -2.305929007734908f) sL = -2.305929007734908f;
             {
                 float a2 = sL * sL;
-                float em = sL * a2;          /* x^3  */  sL -= em / 6.0f;
-                em *= a2;                    /* x^5  */  sL += em / 69.0f;
-                em *= a2;                    /* x^7  */  sL -= em / 2530.08f;
-                em *= a2;                    /* x^9  */  sL += em / 224985.6f;
-                em *= a2;                    /* x^11 */  sL -= em / 9979200.0f;
+                float em = sL * a2;          /* x^3  */  sL -= em * 0.16666667f;
+                em *= a2;                    /* x^5  */  sL += em * 0.014492754f;
+                em *= a2;                    /* x^7  */  sL -= em * 0.0003952447f;
+                em *= a2;                    /* x^9  */  sL += em * 0.00000444473f;
+                em *= a2;                    /* x^11 */  sL -= em * 0.000000100208f;
             }
             /* Right */
             if (sR >  2.305929007734908f) sR =  2.305929007734908f;
             if (sR < -2.305929007734908f) sR = -2.305929007734908f;
             {
                 float a2 = sR * sR;
-                float em = sR * a2;          sR -= em / 6.0f;
-                em *= a2;                    sR += em / 69.0f;
-                em *= a2;                    sR -= em / 2530.08f;
-                em *= a2;                    sR += em / 224985.6f;
-                em *= a2;                    sR -= em / 9979200.0f;
+                float em = sR * a2;          sR -= em * 0.16666667f;
+                em *= a2;                    sR += em * 0.014492754f;
+                em *= a2;                    sR -= em * 0.0003952447f;
+                em *= a2;                    sR += em * 0.00000444473f;
+                em *= a2;                    sR -= em * 0.000000100208f;
             }
 
             /* TapeHack2 – post-distortion smoothing (avg2 only) */
@@ -865,8 +879,8 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
             if (hpL < -1.0f) hpL = -1.0f;
             float dubL = hpL < 0.0f ? -hpL : hpL;
             if (dubL > 0.0f) {
-                float adj = logf(1.0f + 255.0f * dubL) / 2.40823996531f;
-                if (adj > 0.0f) dubL /= adj;
+                float adj = logf(1.0f + 255.0f * dubL) * 0.41524199f;
+                if (adj > 0.0f) dubL *= recip_approx_pos(adj);
                 compDecL = compDecL * (1.0f - iirDecFreq) + dubL * iirDecFreq;
                 sL += hpL * compDecL * outlyAmount;
             }
@@ -878,8 +892,8 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
             if (hpR < -1.0f) hpR = -1.0f;
             float dubR = hpR < 0.0f ? -hpR : hpR;
             if (dubR > 0.0f) {
-                float adj = logf(1.0f + 255.0f * dubR) / 2.40823996531f;
-                if (adj > 0.0f) dubR /= adj;
+                float adj = logf(1.0f + 255.0f * dubR) * 0.41524199f;
+                if (adj > 0.0f) dubR *= recip_approx_pos(adj);
                 compDecR = compDecR * (1.0f - iirDecFreq) + dubR * iirDecFreq;
                 sR += hpR * compDecR * outlyAmount;
             }
@@ -916,7 +930,7 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
             lastSampL   = intermedL;
 
             float fs = slewArrL[0] > slewArrL[1] ? slewArrL[0] : slewArrL[1];
-            float pc = 0.94f / (1.0f + fs * 1.3986013f);
+            float pc = 0.94f * recip_approx_pos(1.0f + fs * 1.3986013f);
             if (sL >  pc) sL =  pc;
             if (sL < -pc) sL = -pc;
         }
@@ -944,7 +958,7 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
             lastSampR   = intermedR;
 
             float fs = slewArrR[0] > slewArrR[1] ? slewArrR[0] : slewArrR[1];
-            float pc = 0.94f / (1.0f + fs * 1.3986013f);
+            float pc = 0.94f * recip_approx_pos(1.0f + fs * 1.3986013f);
             if (sR >  pc) sR =  pc;
             if (sR < -pc) sR = -pc;
         }

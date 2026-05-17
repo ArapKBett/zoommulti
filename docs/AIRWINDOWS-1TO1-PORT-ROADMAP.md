@@ -8,8 +8,10 @@ Airwindows ports.
 Current status update: `ctx[3]` is no longer just a lead. Hardware probes, the
 working `StereoChorus` release, and `T9InitOnly` show it is a usable
 per-instance descriptor arena for large state. The next blocker is more
-specific: current `ToTape9` reaches the post-init DSP path, then crashes in the
-helper-heavy derived-parameter/`computeHDB` math before the 8-sample loop.
+specific: `ToTape9` reached the post-init DSP path, then crashed in the
+helper-heavy derived-parameter/`computeHDB` math before the 8-sample loop. The
+current source removes runtime `__c6xabi_divf` from that path and needs hardware
+retest.
 
 ## What the TI PDFs Tell Us
 
@@ -132,8 +134,8 @@ inactive unless the host rate is ever proven different.
 
 ## Immediate Work Items
 
-1. Rewrite the ToTape9 derived-parameter and `computeHDB` path so the no-loop
-   probe has no runtime float division or fragile helper/call-stub dependency.
+1. Hardware-test the current no-divide `ToTape9.ZDL`, then use the rebuilt
+   no-divide `T9DspNoLoop.ZDL` only if the full build still freezes.
 2. Build an isolated tiny-DSP page 2/3 parameter probe using synthesized
    LineSel-cloned edit handlers, so `params[7..13]` updates are proven
    separately from the ToTape9 kernel.

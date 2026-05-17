@@ -19,9 +19,11 @@ probe-by-probe chronology is preserved in git history through commit
 * `StereoChorus` is the best state reference: it uses `ctx[3]`, lazy clears its
   large buffers, and the current release was reported to sound like Airwindows
   `StereoChorus`.
-* ToTape9's current load crash is not a ctx[3] lazy-init failure. `T9InitOnly`
-  clears/finalizes the default state and loads cleanly. The active blocker is
-  helper-heavy DSP math before the 8-sample processing loop.
+* ToTape9's load crash is not a ctx[3] lazy-init failure. `T9InitOnly`
+  clears/finalizes the default state and loads cleanly. The previous blocker
+  was helper-heavy DSP math before the 8-sample processing loop; the current
+  source removes runtime `__c6xabi_divf` from that path and needs hardware
+  retest.
 * The C/asm `ZOOM_EDIT_HANDLER` macro is not a safe release path for multi-page
   controls. `T9NoAudio` loads with DSP NOPed, then freezes on knob/page
   interaction.
@@ -69,15 +71,15 @@ Audio buffers are float32. The observed stock/custom-safe pattern processes
 | `T9NoHand` | freezes on load | full DSP path is unsafe. |
 | `T9NoInit` | loads | returning before state init is safe, but DSP never enters. |
 | `T9InitOnly` | loads | lazy ctx[3] init/clear/finalization is safe. |
-| `T9DspNoLoop` | freezes | failure is before the 8-sample loop, in parameter derivation / `computeHDB`. |
+| `T9DspNoLoop` | old build froze; current no-divide build untested | parameter derivation / `computeHDB` now builds without `__c6xabi_divf`. |
 | `T9NoState` | loads | helper-light scalar DSP path is viable. |
 
 Next ToTape9 work:
 
-1. Rewrite derived-parameter and `computeHDB` math to avoid runtime float
-   division and fragile helper/call-stub patterns.
-2. Rebuild a no-loop probe and confirm it loads before restoring the sample
-   loop.
+1. Hardware-test the current no-divide `dist/ToTape9.ZDL`.
+2. If the full build still freezes, flash the rebuilt no-divide
+   `T9DspNoLoop.ZDL` to separate remaining derived-param/`computeHDB` risk from
+   the 8-sample loop.
 3. Separately build a tiny-DSP page 2/3 parameter probe using synthesized
    LineSel-cloned handlers to prove `params[7..13]` updates.
 
