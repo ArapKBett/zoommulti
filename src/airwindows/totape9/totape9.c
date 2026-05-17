@@ -301,14 +301,27 @@ static inline void clear_state_chunk(ToTape9State *st)
     }
 }
 
+static inline int totape9_param_table_empty(const float *params)
+{
+    return params[TOTAPE9_INPUT_SLOT]   <= 0.0001f &&
+           params[TOTAPE9_TILT_SLOT]    <= 0.0001f &&
+           params[TOTAPE9_SHAPE_SLOT]   <= 0.0001f &&
+           params[TOTAPE9_FLUTTER_SLOT] <= 0.0001f &&
+           params[TOTAPE9_FLUTSPD_SLOT] <= 0.0001f &&
+           params[TOTAPE9_BIAS_SLOT]    <= 0.0001f &&
+           params[TOTAPE9_HEADBMP_SLOT] <= 0.0001f &&
+           params[TOTAPE9_HEADFRQ_SLOT] <= 0.0001f &&
+           params[TOTAPE9_OUTPUT_SLOT]  <= 0.0001f;
+}
+
 static inline void seed_totape9_param_defaults(float *params, ToTape9State *st)
 {
-    if (st->paramsInitialized) return;
+    if (st->paramsInitialized && !totape9_param_table_empty(params)) return;
 
     /* The linker currently gives custom effects a NOP init handler, so the
      * descriptor defaults can be visible in the UI before params[5..13] have
-     * useful audio-side values. Seed source defaults once, after ctx[3] state
-     * init, then let edit handlers own these slots. */
+     * useful audio-side values. ctx[3] can outlive a zeroed host parameter
+     * table, so also re-seed if every user slot is empty. */
     params[4] = 0.01f;
     params[TOTAPE9_INPUT_SLOT]   = TOTAPE9_INPUT_DEFAULT_NORM;
     params[TOTAPE9_TILT_SLOT]    = TOTAPE9_TILT_DEFAULT_NORM;

@@ -80,7 +80,9 @@ Audio buffers are float32. The observed stock/custom-safe pattern processes
 
 Next ToTape9 work:
 
-1. Verify the one-shot parameter default seeding change.
+1. Verify the parameter default seeding change. The first one-shot version could
+   mute if ctx[3] persisted while the host parameter table was zeroed; the
+   current guard also re-seeds when all nine user slots are empty.
 2. Test whether saved presets and preset switches preserve edited values or get
    overwritten by the audio-side default seed.
 3. Add a desktop comparison harness before calling ToTape9 source-equivalent.

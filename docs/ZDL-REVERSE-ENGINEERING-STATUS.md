@@ -120,7 +120,7 @@ parameter lifecycle tests and a desktop comparison harness.
 ## Highest-Priority Open Questions
 
 * Does the current ToTape9 parameter default seeding stop first-touch value
-  jumps without overwriting saved preset values?
+  jumps and zero-output startup without overwriting saved preset values?
 * Do synthesized LineSel-cloned page 2/3 edit handlers update `params[7..13]`
   correctly in an isolated tiny-DSP probe?
 * What declares stock-style stereo routing for custom effects?
