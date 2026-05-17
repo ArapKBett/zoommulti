@@ -305,6 +305,12 @@ class LinkerConfig:
     # pages while we harden handler synthesis.
     object_edit_start_index: int = 0
 
+    # Experimental init path. Stock init handlers appear to materialize
+    # on/off + knob values at load by invoking the same handlers used for
+    # user edits. Leave disabled unless a port provides a known-small init
+    # shim and needs load/reload parameter materialization.
+    use_object_init_handler: bool = False
+
     # Hardware-safe handler synthesis. Instead of compiling inline asm,
     # clone the complete LineSel handler blob for each requested knob so
     # the handler's relative calls to its local __c6xabi_call_stub remain
@@ -969,7 +975,11 @@ def link(cfg: LinkerConfig) -> None:
                             ))
 
     nop_onf_needed    = 1 if (not use_real_handlers or "onf" not in cfg.handler_funcs) else 0
-    NOP_RETURN_COUNT  = 1 + nop_knob_count + nop_onf_needed   # init + NOP'd knobs + (maybe) onf
+    object_init_name  = f"{cfg.audio_func_name}_init"
+    use_object_init   = cfg.use_object_init_handler and object_init_name in object_symbol_names
+    NOP_RETURN_COUNT  = (0 if use_object_init else 1) + nop_knob_count + nop_onf_needed
+    if NOP_RETURN_COUNT == 0:
+        NOP_RETURN_COUNT = 1
     NOP_RET_OFF       = _align_up(DIVF_OFF + DIVF_SIZE, 32)
     NOP_RET_STUB_SIZE = 32
     NOP_RET_SIZE      = NOP_RET_STUB_SIZE * NOP_RETURN_COUNT
@@ -1063,7 +1073,11 @@ def link(cfg: LinkerConfig) -> None:
         return va
 
     onf_va  = handler_va["onf"] if "onf" in handler_va else _alloc_nop_va()
-    init_va = _alloc_nop_va()    # init always NOPs (no real init synthesized yet)
+    init_va = (
+        obj_symbol_va[object_init_name]
+        if use_object_init
+        else _alloc_nop_va()
+    )
 
     # Per-knob edit handlers.
     #   knob 1 → LineSel knob1_edit (if blob present)
@@ -1210,6 +1224,18 @@ def link(cfg: LinkerConfig) -> None:
 
     if '__c6xabi_divf' in undefined:
         sym_addr[undefined['__c6xabi_divf']] = TEXT_VA + DIVF_OFF
+
+    # Object-defined init shims can call the linker-selected stock/cloned
+    # handlers by their ABI names. Resolve those undefined calls after the
+    # descriptor VAs are known, so the shim invokes the exact same handlers
+    # that the descriptor exposes to the firmware.
+    handler_symbol_vas = {f"{cfg.audio_func_name}_onf": onf_va}
+    for i, param in enumerate(cfg.params):
+        p_name = param.name.replace(' ', '')
+        handler_symbol_vas[f"{cfg.audio_func_name}_{p_name}_edit"] = knob_edit_vas[i]
+    for name, va in handler_symbol_vas.items():
+        if name in undefined:
+            sym_addr[undefined[name]] = va
 
     # Compiler-emitted register save/restore helpers — resolve to the
     # spliced LineSel copies if present.  Without these, any moderately
