@@ -132,8 +132,8 @@ inactive unless the host rate is ever proven different.
 
 ## Immediate Work Items
 
-1. Verify the Drive-category `ToTape9.ZDL` after default seeding and document
-   whether first-touch knob jumps are fixed.
+1. Verify the default seeding change and document whether first-touch knob
+   jumps are fixed.
 2. Test ToTape9 saved preset and preset-switch behavior so the default seed does
    not become a hidden value-reset bug.
 3. Build an isolated tiny-DSP page 2/3 parameter probe using synthesized

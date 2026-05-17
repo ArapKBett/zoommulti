@@ -64,6 +64,10 @@ effect directory conventions are summarized in
 - `ToTape9.ZDL` now loads and runs on the test MS-70CDR after removing runtime
   `__c6xabi_divf` from the full DSP path. It is still under validation for
   parameter initialization, preset behavior, and source-equivalent exactness.
+- On MS-70CDR, Drive-category custom effects may not appear in the on-device FX
+  browser unless at least one stock Drive effect is also installed. `ToTape9`
+  is intentionally categorized as Drive, so install a stock Drive effect too if
+  it flashes but does not show up when scrolling the pedal.
 - Parameter scaling is part of the porting work. A port should not be called
   source-equivalent until its raw knob ranges have been confirmed on hardware.
 - These are `.ZDL` builds, not `.ZD2` builds.

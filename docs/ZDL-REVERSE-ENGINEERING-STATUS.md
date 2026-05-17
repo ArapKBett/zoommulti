@@ -33,6 +33,9 @@ What is still experimental:
 * The custom stereo routing declaration remains unknown. Custom code can process
   stereo buffers once running, but the stock effect-level stereo mechanism has
   not been mapped.
+* Category exposure has a host/browser dependency. On the MS-70CDR test pedal,
+  Drive-category `ToTape9` flashed successfully but only appeared in the
+  on-device FX browser after a stock Drive effect was also installed.
 
 ## ZDL File Layers
 

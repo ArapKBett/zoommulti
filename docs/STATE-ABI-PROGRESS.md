@@ -26,6 +26,9 @@ probe-by-probe chronology is preserved in git history through commit
 * The C/asm `ZOOM_EDIT_HANDLER` macro is not a safe release path for multi-page
   controls. `T9NoAudio` loads with DSP NOPed, then freezes on knob/page
   interaction.
+* Category visibility is partly host/browser state. On the MS-70CDR test
+  pedal, Drive-category `ToTape9` could flash but stayed hidden until at least
+  one stock Drive effect was also installed.
 
 ## Runtime Map
 
@@ -73,12 +76,11 @@ Audio buffers are float32. The observed stock/custom-safe pattern processes
 | `T9InitOnly` | loads | lazy ctx[3] init/clear/finalization is safe. |
 | `T9DspNoLoop` | old build froze; current no-divide split no longer the priority | parameter derivation / `computeHDB` builds without `__c6xabi_divf`. |
 | `T9NoState` | loads | helper-light scalar DSP path is viable. |
-| `ToTape9` | loads and runs | full ctx[3]-backed no-divide DSP is viable enough for listening/exactness work. |
+| `ToTape9` | loads and runs | full ctx[3]-backed no-divide DSP is viable enough for listening/exactness work; Drive category needs a stock Drive effect present on MS-70CDR to show in the pedal browser. |
 
 Next ToTape9 work:
 
-1. Verify the Drive-category `dist/ToTape9.ZDL` after the one-shot parameter
-   default seeding change.
+1. Verify the one-shot parameter default seeding change.
 2. Test whether saved presets and preset switches preserve edited values or get
    overwritten by the audio-side default seed.
 3. Add a desktop comparison harness before calling ToTape9 source-equivalent.

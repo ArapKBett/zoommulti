@@ -28,3 +28,9 @@ ZDL-based MultiStomp pedals and are only hardware-tested on MS-70CDR firmware
 If an effect does not appear, confirm that Zoom Effect Manager is reading the
 same `dist/` folder shown in this repo and that the `From Folder` source is
 enabled.
+
+On MS-70CDR firmware 2.10, a Drive-category custom effect can flash correctly
+but stay hidden in the pedal's on-device FX browser if no stock Drive effect is
+installed. If `ToTape9.ZDL` writes successfully but does not appear while
+scrolling effects, also install at least one stock Drive effect. With a stock
+Drive effect present, the custom Drive effect has been reported visible.
