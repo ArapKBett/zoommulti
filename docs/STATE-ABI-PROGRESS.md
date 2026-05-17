@@ -83,10 +83,10 @@ Next ToTape9 work:
 1. Verify the parameter fallback change. Audio-side writes to `params[5..13]`
    were removed because the pedal can remember values across browsing/loading;
    ToTape9 now treats the host parameter table as read-only. Fallback is
-   page-granular for the three visible UI pages. Bias is the one exception:
-   empty/zero Bias reads as the neutral source default because the extreme
-   zero-Bias setting can suppress the signal when the slot was merely
-   unmaterialized.
+   page-granular for the three visible UI pages, plus `ctx[3]` caches for the
+   mute-capable controls (`Input`, `Bias`, `Output`). Valid nonzero host reads
+   update those caches; empty/zero reload reads use the cached/default value so
+   an unmaterialized slot cannot mute the effect.
 2. Test whether saved presets and preset switches preserve edited values with
    the read-only fallback path.
 3. Add a desktop comparison harness before calling ToTape9 source-equivalent.

@@ -170,7 +170,7 @@ TOTAPE9_CODE_SECTION(TOTAPE9_AUDIO_FUNC)
 #define KNOB_NORM    (1.0f / 0.14f)
 
 #define TOTAPE9_MAGIC 0x54395039u
-#define TOTAPE9_VERSION 3u
+#define TOTAPE9_VERSION 4u
 
 /* -------------------------------------------------------------------------
  * gslew layout: 9 stages × 3 words = [prevL, prevR, threshold]  (27 words)
@@ -204,6 +204,10 @@ typedef struct ToTape9State {
     uint32_t version;
     uint32_t initialized;
     uint32_t clearIndex;
+    uint32_t criticalParamCacheReady;
+    float cachedInput;
+    float cachedBias;
+    float cachedOutput;
 
     float iirEncL, iirEncR;
     float compEncL, compEncR;
@@ -270,13 +274,18 @@ static inline float totape9_param_norm(float raw, float fallback_norm, int group
     return zoom_clamp01(fallback_norm);
 }
 
-static inline float totape9_bias_norm(float raw, int page_empty)
+static inline float totape9_param_norm_cached(float raw, float fallback_norm, float *cache, uint32_t cache_ready)
 {
-    /* Bias=0 is an extreme source setting and, when produced by an
-     * unmaterialized parameter slot, can suppress the signal until the knob is
-     * touched. Prefer the neutral source default for empty/zero Bias reads. */
-    if (raw <= 0.0001f || page_empty) return TOTAPE9_BIAS_DEFAULT_NORM;
-    return totape9_param_norm(raw, TOTAPE9_BIAS_DEFAULT_NORM, page_empty);
+    if (raw == raw && raw > 0.0001f && raw <= 100.0f) {
+        float v = raw <= 1.0f ? raw : raw * 0.01f;
+        v = zoom_clamp01(v);
+        *cache = v;
+        return v;
+    }
+    if (cache_ready && *cache == *cache && *cache >= 0.0f && *cache <= 1.0f) {
+        return *cache;
+    }
+    return zoom_clamp01(fallback_norm);
 }
 
 static inline void start_lazy_init(ToTape9State *st)
@@ -289,12 +298,16 @@ static inline void start_lazy_init(ToTape9State *st)
     st->magic = TOTAPE9_MAGIC;
     st->version = TOTAPE9_VERSION;
     st->initialized = 0u;
-    st->clearIndex = 16u;  /* skip the four header words just written */
+    st->clearIndex = 32u;  /* skip the header/cache words just written */
+    st->criticalParamCacheReady = 1u;
+    st->cachedInput = TOTAPE9_INPUT_DEFAULT_NORM;
+    st->cachedBias = TOTAPE9_BIAS_DEFAULT_NORM;
+    st->cachedOutput = TOTAPE9_OUTPUT_DEFAULT_NORM;
 }
 
 static inline void clear_state_chunk(ToTape9State *st)
 {
-    /* Word-aligned stores. clearIndex starts after the header words and advances by
+    /* Word-aligned stores. clearIndex starts after the header/cache words and advances by
      * TOTAPE9_CLEAR_STEP (both multiples of 4), so the cast is safe.
      * Stock effects use word stores, and cl6x emits cleaner pipelined
      * STW for this form than for byte-clearing a large state struct. */
@@ -319,6 +332,10 @@ static inline void clear_state_chunk(ToTape9State *st)
         st->nextmaxR = 0.5f;
         st->fpdL = 0x1234567u;
         st->fpdR = 0x89ABCDFu;
+        st->criticalParamCacheReady = 1u;
+        st->cachedInput = TOTAPE9_INPUT_DEFAULT_NORM;
+        st->cachedBias = TOTAPE9_BIAS_DEFAULT_NORM;
+        st->cachedOutput = TOTAPE9_OUTPUT_DEFAULT_NORM;
         st->initialized = 1u;
     }
 }
@@ -577,15 +594,15 @@ void TOTAPE9_AUDIO_FUNC(unsigned int *ctx)
     int page1Empty = totape9_param_page_empty(params, TOTAPE9_INPUT_SLOT, TOTAPE9_TILT_SLOT, TOTAPE9_SHAPE_SLOT);
     int page2Empty = totape9_param_page_empty(params, TOTAPE9_FLUTTER_SLOT, TOTAPE9_FLUTSPD_SLOT, TOTAPE9_BIAS_SLOT);
     int page3Empty = totape9_param_page_empty(params, TOTAPE9_HEADBMP_SLOT, TOTAPE9_HEADFRQ_SLOT, TOTAPE9_OUTPUT_SLOT);
-    float pInput   = totape9_param_norm(params[TOTAPE9_INPUT_SLOT],   TOTAPE9_INPUT_DEFAULT_NORM, page1Empty);
+    float pInput   = totape9_param_norm_cached(params[TOTAPE9_INPUT_SLOT], TOTAPE9_INPUT_DEFAULT_NORM, &st->cachedInput, st->criticalParamCacheReady);
     float pTilt    = totape9_param_norm(params[TOTAPE9_TILT_SLOT],    TOTAPE9_TILT_DEFAULT_NORM, page1Empty);
     float pShape   = totape9_param_norm(params[TOTAPE9_SHAPE_SLOT],   TOTAPE9_SHAPE_DEFAULT_NORM, page1Empty);
     float pFlutter = totape9_param_norm(params[TOTAPE9_FLUTTER_SLOT], TOTAPE9_FLUTTER_DEFAULT_NORM, page2Empty);
     float pFlutSpd = totape9_param_norm(params[TOTAPE9_FLUTSPD_SLOT], TOTAPE9_FLUTSPD_DEFAULT_NORM, page2Empty);
-    float pBias    = totape9_bias_norm(params[TOTAPE9_BIAS_SLOT], page2Empty);
+    float pBias    = totape9_param_norm_cached(params[TOTAPE9_BIAS_SLOT], TOTAPE9_BIAS_DEFAULT_NORM, &st->cachedBias, st->criticalParamCacheReady);
     float pHeadBmp = totape9_param_norm(params[TOTAPE9_HEADBMP_SLOT], TOTAPE9_HEADBMP_DEFAULT_NORM, page3Empty);
     float pHeadFrq = totape9_param_norm(params[TOTAPE9_HEADFRQ_SLOT], TOTAPE9_HEADFRQ_DEFAULT_NORM, page3Empty);
-    float pOutput  = totape9_param_norm(params[TOTAPE9_OUTPUT_SLOT],  TOTAPE9_OUTPUT_DEFAULT_NORM, page3Empty);
+    float pOutput  = totape9_param_norm_cached(params[TOTAPE9_OUTPUT_SLOT], TOTAPE9_OUTPUT_DEFAULT_NORM, &st->cachedOutput, st->criticalParamCacheReady);
 
     /* --- Derive algorithm parameters (matching ToTape9 formulas exactly)
      *     overallscale = 1.0 throughout                                  --- */
