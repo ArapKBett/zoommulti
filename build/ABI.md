@@ -388,9 +388,18 @@ should follow the same pattern — invoke onf, then each edit handler.
 Current linker support: `LinkerConfig(use_object_init_handler=True)` can use an
 object-defined `<audio_func>_init` symbol when present and resolves calls from
 that shim to the exact on/off/edit handler VAs selected for the descriptor.
-Hardware caution: the ToTape9 experiment that invoked on/off plus all nine edit
-handlers from init crashed the pedal on boot, so release builds currently keep a
-NOP init until the init-call ABI is understood.
+Hardware caution: `InitProbe` stage 2 showed that a custom init shim can safely
+perform the stock-style coefficient setup call through `__c6xabi_call_stub`.
+The next stage, which called a cloned LineSel edit handler from init after that
+setup, froze the pedal on boot. Release builds currently keep a NOP init until
+the edit-handler init context is understood.
+
+Relocation caution: object-file `PCR_S21` relocations do not all use the same
+addend interpretation. For section-local calls, cl6x's placeholder displacement
+is measured from the section start, so the linker adds the instruction's
+section offset. For external symbols such as `__c6xabi_call_stub`, the resolved
+symbol address is already the final VA; adding the instruction offset again
+lands past the stub and caused a boot freeze during `InitProbe` testing.
 
 ### 5.3.b Parameter table layout [hardware-confirmed through 9 params]
 

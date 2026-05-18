@@ -119,10 +119,11 @@ static inline float clampf_local(float x, float lo, float hi)
     return x;
 }
 
-static inline float vt_param_norm(float raw, float fallback_norm)
+static inline float vt_param_norm(float raw, float fallback_norm, int group_empty)
 {
     if (raw != raw) return zoom_clamp01(fallback_norm);
-    if (raw <= 0.0001f) return zoom_clamp01(fallback_norm);
+    if (raw < 0.0f) return zoom_clamp01(fallback_norm);
+    if (raw <= 0.0001f) return group_empty ? zoom_clamp01(fallback_norm) : 0.0f;
     if (raw <= 1.0f) return zoom_clamp01(raw);
     if (raw <= 100.0f) return zoom_clamp01(raw * 0.01f);
     return zoom_clamp01(fallback_norm);
@@ -513,11 +514,19 @@ void VERBTINY_AUDIO_FUNC(unsigned int *ctx)
         return;
     }
 
-    float A = vt_param_norm(params[VERBTINY_REPLACE_SLOT], VERBTINY_REPLACE_DEFAULT_NORM);
-    float B = vt_param_norm(params[VERBTINY_DEREZ_SLOT], VERBTINY_DEREZ_DEFAULT_NORM);
-    float C = vt_param_norm(params[VERBTINY_FILTER_SLOT], VERBTINY_FILTER_DEFAULT_NORM);
-    float D = vt_param_norm(params[VERBTINY_WIDER_SLOT], VERBTINY_WIDER_DEFAULT_NORM);
-    float E = vt_param_norm(params[VERBTINY_DRYWET_SLOT], VERBTINY_DRYWET_DEFAULT_NORM);
+    float rawA = params[VERBTINY_REPLACE_SLOT];
+    float rawB = params[VERBTINY_DEREZ_SLOT];
+    float rawC = params[VERBTINY_FILTER_SLOT];
+    float rawD = params[VERBTINY_WIDER_SLOT];
+    float rawE = params[VERBTINY_DRYWET_SLOT];
+    int groupEmpty = (rawA <= 0.0001f) && (rawB <= 0.0001f) && (rawC <= 0.0001f)
+                  && (rawD <= 0.0001f) && (rawE <= 0.0001f);
+
+    float A = vt_param_norm(rawA, VERBTINY_REPLACE_DEFAULT_NORM, groupEmpty);
+    float B = vt_param_norm(rawB, VERBTINY_DEREZ_DEFAULT_NORM, groupEmpty);
+    float C = vt_param_norm(rawC, VERBTINY_FILTER_DEFAULT_NORM, groupEmpty);
+    float D = vt_param_norm(rawD, VERBTINY_WIDER_DEFAULT_NORM, groupEmpty);
+    float E = vt_param_norm(rawE, VERBTINY_DRYWET_DEFAULT_NORM, groupEmpty);
 
     float oneMinusA = 1.0f - A;
     float shapedA = 1.0f - (oneMinusA * oneMinusA);

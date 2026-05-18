@@ -1237,6 +1237,15 @@ def link(cfg: LinkerConfig) -> None:
         if name in undefined:
             sym_addr[undefined[name]] = va
 
+    # Object-defined init shims also reference the per-effect Coe table so
+    # they can pass its address to the "register coefficient table" host
+    # callback (stock effects all do this before invoking edit handlers at
+    # load time). The table itself is the existing _DUMMY_COE block already
+    # laid out in .const above; we just expose its VA to the .obj.
+    coe_sym_name = f"_{cfg.audio_func_name}_Coe"
+    if coe_sym_name in undefined:
+        sym_addr[undefined[coe_sym_name]] = COE_VA
+
     # Compiler-emitted register save/restore helpers — resolve to the
     # spliced LineSel copies if present.  Without these, any moderately
     # complex audio function (anything that spills to stack) would link
@@ -1273,7 +1282,16 @@ def link(cfg: LinkerConfig) -> None:
             if rel['sym_idx'] not in sym_addr:
                 print(f"  SKIP unresolved sym {sym['name']!r} at {sec['name']}+0x{offset:X}")
                 continue
-            target = sym_addr[rel['sym_idx']] + rel['addend']
+            # cl6x's intra-section CALLP placeholders encode a displacement
+            # measured from the SECTION START, not from the instruction. We
+            # compensate by adding the instruction's section offset (stored
+            # in rel['addend'] for PCR_S21). For externally-resolved symbols
+            # like __c6xabi_call_stub, sym_addr is the final VA and no such
+            # compensation is needed — applying it lands the call past the
+            # real target by exactly the instruction's section offset, which
+            # froze the pedal on InitProbe stage 2.
+            addend = rel['addend'] if sym['shndx'] != 0 else 0
+            target = sym_addr[rel['sym_idx']] + addend
             file_off = base_off + offset
             if rtype == RT_ABS_L16:
                 _patch_abs_l16(out_text, file_off, target)

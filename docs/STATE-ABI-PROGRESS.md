@@ -1,6 +1,6 @@
 # State ABI Progress
 
-Last updated: 2026-05-17
+Last updated: 2026-05-18
 
 This is the compact current-state map for the hardware probes. The older
 probe-by-probe chronology is preserved in git history through commit
@@ -28,6 +28,12 @@ probe-by-probe chronology is preserved in git history through commit
 * The C/asm `ZOOM_EDIT_HANDLER` macro is not a safe release path for multi-page
   controls. `T9NoAudio` loads with DSP NOPed, then freezes on knob/page
   interaction.
+* Stock-style init setup is partly mapped. `InitProbe` stage 2 proved a
+  custom `_init` can safely call the host's coefficient-table setup callback
+  through `__c6xabi_call_stub`, once PCR_S21 external relocations are patched
+  correctly. Stage 3, calling a cloned LineSel edit handler from that init
+  context, froze on boot. The likely missing ABI detail is the init-time host
+  state/callback table expected by stock edit handlers.
 * Category visibility is partly host/browser state. On the MS-70CDR test
   pedal, Drive-category `ToTape9` could flash but stayed hidden until at least
   one stock Drive effect was also installed.
@@ -67,6 +73,29 @@ Audio buffers are float32. The observed stock/custom-safe pattern processes
 | `T9NoState` | A simple ToTape9-shaped DSP path can run; Input audibly changes gain. |
 | `ToTape9` | No-divide full DSP loads and runs on the test MS-70CDR. |
 | `VerbTiny` | First Airwindows reverb candidate; builds with ctx[3] state, no `.fardata`, and no object relocations. Hardware result pending. |
+| `InitProbe` | Object-defined init setup call loads; init-time cloned edit-handler call freezes on boot. |
+
+## Init And Edit-Handler ABI Status
+
+Known safe enough:
+
+* NOP init.
+* Stock-style coefficient-table setup from a custom `_init`: load callback
+  pointer from state offset `+136`, pass `ctx[1]`/param table, pass
+  `_<AudioFunc>_Coe`, and call `__c6xabi_call_stub`.
+* Stock LineSel `onf`, knob 1, and knob 2 handlers when invoked by normal user
+  interaction.
+* AIR's third-knob blob in limited contexts, though it is not a general
+  page-2/3 solution.
+* Synthesized LineSel-cloned handlers as a linker strategy, but only after an
+  isolated tiny-DSP hardware confirmation.
+
+Known unsafe:
+
+* Calling a cloned LineSel edit handler from custom `_init`; `InitProbe` stage
+  3 froze on boot after setup plus one edit-handler call.
+* The object-defined `ZOOM_EDIT_HANDLER` macro path for multi-page UI builds.
+  It pulls in `__c6xabi_call_stub` and freezes on interaction in `T9NoAudio`.
 
 ## ToTape9 Split Status
 
@@ -118,21 +147,6 @@ Hardware status: untested. First test should be basic load, unbypass, page 2
 parameter interaction (`Wider`, `DryWet`), reload, and duplicate-instance
 behavior.
 
-## Edit-Handler ABI Status
-
-Known safe enough:
-
-* Stock LineSel `onf`, knob 1, and knob 2 handlers.
-* AIR's third-knob blob in limited contexts, though it is not a general
-  page-2/3 solution.
-* Synthesized LineSel-cloned handlers as a linker strategy, but only after an
-  isolated tiny-DSP hardware confirmation.
-
-Known unsafe:
-
-* The object-defined `ZOOM_EDIT_HANDLER` macro path for multi-page UI builds.
-  It pulls in `__c6xabi_call_stub` and freezes on interaction in `T9NoAudio`.
-
 ## Open Questions
 
 * What declares or toggles stock stereo routing for custom ZDLs?
@@ -141,6 +155,8 @@ Known unsafe:
   reload, and duplicate instances beyond the cases already tested?
 * Which runtime helpers are safe enough to bundle, and which must be avoided?
 * Can a compact reloc-free page 2/3 edit handler be written or cloned safely?
+* What init-time state fields make stock edit handlers safe to call during
+  load, and are those fields available to custom effects?
 
 ## How To Record New Findings
 

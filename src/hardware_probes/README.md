@@ -9,6 +9,7 @@ Build one probe by name:
 ```bash
 python3 -B build_all.py ctxmap
 python3 -B build_all.py descsize
+python3 -B build_all.py initprobe
 ```
 
 Build release effects plus every probe:

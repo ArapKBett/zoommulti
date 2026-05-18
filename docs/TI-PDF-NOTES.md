@@ -106,7 +106,11 @@ From `sprab89b`, Section 13.5:
 
 * `R_C6000_ABS32`, `R_C6000_ABS_L16`, `R_C6000_ABS_H16` encode absolute
   addresses and are the forms this linker knows how to patch.
-* `R_C6000_PCR_S21` is a PC-relative branch/call relocation.
+* `R_C6000_PCR_S21` is a PC-relative branch/call relocation. In cl6x object
+  files handled by this repo, section-local `PCR_S21` calls need the
+  instruction's section offset folded into the target, while externally
+  resolved calls such as `__c6xabi_call_stub` must not. Treat this as a
+  linker-rule finding, not a generic ELF rule.
 * `R_C6000_SBR_*` are DP/B14-relative relocations.
 * `R_C6000_SBR_GOT_*` are GOT forms, also DP-relative.
 * `R_C6000_ABS_H16` and other H16 relocations are Rela-only because the high

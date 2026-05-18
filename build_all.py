@@ -32,6 +32,7 @@ RELEASE_PLUGINS = [
 ]
 
 DIAGNOSTIC_PLUGINS = [
+    ("tovinyl4",    PLUGIN_DIR / "tovinyl4"    / "build.py"),
     ("hello",       PLUGIN_DIR / "hello"       / "build.py"),
     ("ctxmap",      PROBE_DIR / "ctxmap"      / "build.py"),
     ("paramtap",    PROBE_DIR / "paramtap"    / "build.py"),
@@ -43,6 +44,7 @@ DIAGNOSTIC_PLUGINS = [
     ("desccomb",    PROBE_DIR / "desccomb"    / "build.py"),
     ("descsize",    PROBE_DIR / "descsize"    / "build.py"),
     ("desciso",     PROBE_DIR / "desciso"     / "build.py"),
+    ("initprobe",   PROBE_DIR / "initprobe"   / "build.py"),
 ]
 
 PLUGINS = RELEASE_PLUGINS + DIAGNOSTIC_PLUGINS

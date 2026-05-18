@@ -1,0 +1,23 @@
+{
+  "effect_name": "InitProbe",
+  "comment": "Diagnostic ZDL for the parameter-materialization-on-load problem. Current safe stage: Knob1 controls audio gain, three LineSel-cloned UI knobs are present, and the object-defined init shim performs only the stock-style __call_stub setup invocation that registers a Coe table via the callback at state[+136]. The next stage that called a cloned edit handler from init froze on boot, so this build intentionally does not call edit handlers.",
+
+  "audio_func_name": "Fx_FLT_InitProbe",
+
+  "gid": 2,
+  "gid_comment": "0x02 = Filter category. Same as GAIN/PurestDr/TapeHack - a quiet place for a diagnostic.",
+
+  "fxid": 407,
+  "fxid_comment": "0x0197 - next free in the custom Airwindows range.",
+
+  "fxid_version": "1.00",
+  "flags_byte": 1,
+
+  "params": [
+    {"name": "Knob1", "type": "knob", "max": 100, "default": 25, "comment": "params[5]. Audio gain observable. Switching away+back currently exposes whether the saved UI value has been materialized into the audio parameter table."},
+    {"name": "Knob2", "type": "knob", "max": 100, "default": 50, "comment": "params[6]."},
+    {"name": "Knob3", "type": "knob", "max": 100, "default": 75, "comment": "params[7]."}
+  ],
+
+  "audio_nop": false
+}

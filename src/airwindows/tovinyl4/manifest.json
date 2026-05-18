@@ -1,0 +1,24 @@
+{
+  "effect_name": "ToVinyl4",
+  "comment": "Airwindows ToVinyl4 port candidate. Mid/side cascaded one-pole lowpasses, de-essing antialias trigger, and groove-wear moving averages. State lives in ctx[3]; dither tail omitted (matches existing Airwindows ports).",
+
+  "audio_func_name": "Fx_SFX_ToVinyl4",
+
+  "gid": 7,
+  "gid_comment": "0x07 = SFX category. Same family as BitCrush; vinyl-emulation lo-fi belongs here for the MS-70CDR.",
+
+  "fxid": 406,
+  "fxid_comment": "0x0196 in the custom Airwindows range (next after VerbTiny 0x0195).",
+
+  "fxid_version": "1.00",
+  "flags_byte": 1,
+
+  "params": [
+    {"name": "Bright", "type": "knob", "max": 100, "default": 50,  "scale": "source_normalized", "audio_min": 0.0, "audio_max": 1.0, "audio_default": 0.5, "source_default": 0.5, "source_formula": "midCutoff = (A*A)*290 + 10 (Hz, before /50000 and resonance cascade)", "comment": "Airwindows A. Mid lowpass cutoff (low = darker)."},
+    {"name": "SideRll", "type": "knob", "max": 100, "default": 50, "scale": "source_normalized", "audio_min": 0.0, "audio_max": 1.0, "audio_default": 0.5, "source_default": 0.5, "source_formula": "sideCutoff = (B*B)*290 + 10 (Hz)", "comment": "Airwindows B. Side lowpass cutoff (low = more mono in bass)."},
+    {"name": "Dehiss", "type": "knob", "max": 100, "default": 50,  "scale": "source_cubed",      "audio_min": 0.0, "audio_max": 1.0, "audio_default": 0.5, "source_default": 0.5, "source_formula": "intensity = pow(C,3) * 32 (de-essing trigger gain)", "comment": "Airwindows C. De-ess / antialias trigger intensity."},
+    {"name": "Wear",   "type": "knob", "max": 100, "default": 25,  "scale": "source_normalized", "audio_min": 0.0, "audio_max": 1.0, "audio_default": 0.25, "source_default": 0.25, "source_formula": "fMid taps span D*9+1 samples; fSide taps span D*4.5+1 samples (moving-average groove wear)", "comment": "Airwindows D. Groove-wear moving-average length."}
+  ],
+
+  "audio_nop": false
+}

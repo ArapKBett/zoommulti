@@ -62,6 +62,9 @@ experiment, not a port.
   hardware-reported as running.
 * Object-defined C/asm `ZOOM_EDIT_HANDLER` symbols for multi-page UIs.
   `T9NoAudio` loads with the DSP NOPed, then freezes on knob/page interaction.
+* Calling stock-cloned edit handlers from custom `_init`. `InitProbe` proved
+  the setup callback alone can load, but setup plus one cloned LineSel edit
+  handler froze on boot.
 * Stock edit-handler blobs whose internal references were not cloned or
   patched for this plugin.
 * Category/SONAME mismatch, for example `gid=3` with `ZDL_MOD_...` or

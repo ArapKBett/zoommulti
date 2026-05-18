@@ -1,6 +1,6 @@
 # ZDL and Pedal Reverse-Engineering Status
 
-Last updated: 2026-05-17
+Last updated: 2026-05-18
 
 This is the current map of the Zoom `.ZDL` wrapper, the embedded TI C6000 ELF,
 and the runtime ABI details that matter for custom effects. Keep experiment
@@ -28,10 +28,16 @@ What is still experimental:
   initialization, preset behavior, and source-equivalence testing.
 * `dist/VerbTiny.ZDL` is the first reverb candidate. It builds with `ctx[3]`
   state, no `.fardata`, and no object relocations; hardware result is pending.
+* `src/airwindows/tovinyl4/` is a source-only ToVinyl4 candidate. It builds
+  manually or via `build_all.py tovinyl4`, but is not in release `dist/` until
+  hardware testing says it should be.
 * Multi-page parameter editing is not a clean SDK contract yet. Stock LineSel
   handlers are useful for the first two knobs; object-defined
   `ZOOM_EDIT_HANDLER` freezes on interaction in `T9NoAudio`; synthesized
   LineSel clones still need an isolated page 2/3 tiny-DSP proof.
+* Init-time parameter materialization is still unsolved. `InitProbe` proved the
+  stock-style coefficient setup callback can be called from custom `_init`, but
+  invoking a cloned LineSel edit handler from that custom init froze on boot.
 * The custom stereo routing declaration remains unknown. Custom code can process
   stereo buffers once running, but the stock effect-level stereo mechanism has
   not been mapped.
@@ -47,7 +53,7 @@ What is still experimental:
 | Header size | Standard files place ELF at offset `0x4c`; extended files must honor the `SIZE` header-size field. |
 | Extended payloads | Some stock files carry `BCAB` or `CABI` payloads between `INFO` and ELF. Their fields are preserved, not fully decoded. |
 | Embedded executable | TI C6000 ELF32, little-endian, `ET_DYN`. |
-| Relocations | `.rela.dyn` is used for descriptor pointers, image pointers, and code-address materialization. |
+| Relocations | `.rela.dyn` is used for descriptor pointers, image pointers, and code-address materialization. Object `PCR_S21` relocations need different addend handling for section-local calls versus external symbols. |
 | Exported symbols | Firmware finds names such as `Dll_<Name>`, `Fx_<GID>_<Name>`, init/onf/edit handlers, `SonicStomp`, `effectTypeImageInfo`, picture, and knob info. |
 
 Stock corpus observations:
@@ -124,8 +130,9 @@ the same process for reverb-sized state.
 
 * Does the current ToTape9 page-granular read-only parameter fallback, cached
   critical controls, and tolerant on/off gate stop first-touch Bias/Output and
-  zero-output startup issues? The first object-defined init shim crashed on
-  boot, so init materialization needs a smaller isolated probe.
+  zero-output startup issues? The first edit-calling object-defined init shim
+  crashed on boot; setup-only `InitProbe` is safe, so the next step is mapping
+  the missing edit-handler init context.
 * Does the new `VerbTiny` reverb candidate load and pass audio on the test
   MS-70CDR, and do synthesized page 2 controls survive interaction?
 * Do synthesized LineSel-cloned page 2/3 edit handlers update `params[7..13]`

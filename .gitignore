@@ -9,8 +9,11 @@ zoom-fx-modding-main
 __pycache__/
 pycache_/
 *.pyc
+*.asd
 src/airwindows/*/*.obj
 src/airwindows/*/*_params.h
 !src/airwindows/common/zoom_params.h
 src/hardware_probes/*/*.obj
 src/hardware_probes/*/*_params.h
+*.wav
+tools/measure/out/
