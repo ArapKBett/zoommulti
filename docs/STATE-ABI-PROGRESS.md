@@ -75,6 +75,7 @@ Audio buffers are float32. The observed stock/custom-safe pattern processes
 | `VerbTiny` | First Airwindows reverb candidate; builds with ctx[3] state, no `.fardata`, and no object relocations. Hardware result pending. |
 | `Galactic` | Larger Airwindows reverb candidate; builds with about 528 KB of ctx[3] state, no `.fardata`, and no object relocations. Hardware result pending. |
 | `TapeEcho4` | Custom Airwindows-inspired tape echo; builds with about 512 KB of ctx[3] delay state, no `.fardata`, no `.text`, and no object relocations. Tempo control is BPM+division with stock tempo descriptor flags; true host tap-tempo behavior is pending. |
+| `OTT` | Custom Dynamics-category OTT-style compressor; builds with small ctx[3] state, no `.fardata`, no `.text`, and no object relocations. Hardware result pending. |
 | `InitProbe` | Object-defined init setup call loads; init-time cloned edit-handler call freezes on boot. |
 
 ## Init And Edit-Handler ABI Status
@@ -157,6 +158,13 @@ and no object relocations. Hardware testing still needs load, unbypass,
 parameter paging, reload, and duplicate-instance checks. The `Tempo` descriptor
 uses the stock tempo flag pattern, but custom-ZDL access to the pedal's global
 tap tempo is still unresolved.
+
+`OTT` is another custom effect, not a port. It confirms that small `ctx[3]`
+state is practical for non-delay DSP history too: crossover memories, band
+envelopes, and smoothed gains all live in the descriptor arena instead of
+`.fardata`. Its first hardware test should focus on Dynamics-category browser
+visibility, unbypass behavior, page-2 `SplitFrq`, and whether the aggressive
+gain law needs taming for guitar-level inputs.
 
 ## Open Questions
 

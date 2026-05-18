@@ -13,6 +13,8 @@ pycache_/
 src/airwindows/*/*.obj
 src/airwindows/*/*_params.h
 !src/airwindows/common/zoom_params.h
+src/custom/*/*.obj
+src/custom/*/*_params.h
 src/hardware_probes/*/*.obj
 src/hardware_probes/*/*_params.h
 *.wav

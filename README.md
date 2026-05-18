@@ -77,6 +77,10 @@ effect directory conventions are summarized in
   memory, TapeHack-style saturation, feedback bandwidth limiting, wow/flutter,
   and a BPM+division tempo workflow. Hardware result is pending; true host tap
   tempo for custom ZDLs is still unproven.
+- `OTT.ZDL` is a custom Dynamics-category OTT-style multiband compressor, not
+  an Ableton port. It exposes `DryWet`, `Time`, `Output`, and `SplitFrq`, and
+  builds cleanly with small `ctx[3]` state, no `.fardata`, no `.text`, and no
+  object relocations. Hardware result is pending.
 - On MS-70CDR, Drive-category custom effects may not appear in the on-device FX
   browser unless at least one stock Drive effect is also installed. `ToTape9`
   is intentionally categorized as Drive, so install a stock Drive effect too if
@@ -117,7 +121,7 @@ The build scripts currently expect the TI compiler here:
 ```
 
 On Linux, Windows, or another Code Composer Studio install, update `TI_ROOT` in
-the relevant `src/airwindows/*/build.py`.
+the relevant `src/airwindows/*/build.py` or `src/custom/*/build.py`.
 
 Build release effects:
 
@@ -130,6 +134,7 @@ Build one effect:
 ```bash
 python3 -B build_all.py stereochorus
 python3 -B build_all.py tapeecho4
+python3 -B build_all.py ott
 python3 -B build_all.py totape9
 python3 -B build_all.py verbtiny
 ```
@@ -153,6 +158,7 @@ The core pieces are:
 |---|---|
 | [build/linker.py](build/linker.py) | Static linker: TI C6000 `.obj` -> complete Zoom `.ZDL`. |
 | [src/airwindows/](src/airwindows/) | Effect sources, manifests, images, and per-effect build scripts. |
+| [src/custom/](src/custom/) | Original non-Airwindows effects built with the same linker/safety rules. |
 | [src/hardware_probes/](src/hardware_probes/) | Diagnostic ZDLs used to map the pedal runtime ABI. |
 | [dist/](dist/) | Release `.ZDL` files for users. |
 | [stock_zdls/](stock_zdls/) | Tracked 830-file stock ZDL corpus used for comparison. |
@@ -162,8 +168,9 @@ large state descriptor at `ctx[3]`. That made the stateful `StereoChorus` port
 possible, and the no-divide `ToTape9` full-kernel build now also loads and runs
 on the test MS-70CDR. `VerbTiny` and `Galactic` are reverb candidates using the
 same large-state strategy. `TapeEcho4` uses that same safe state pattern for a
-custom tape-delay design. The next ToTape9 work is parameter/default lifecycle
-validation and source-equivalence testing.
+custom tape-delay design, and `OTT` uses a small `ctx[3]` state block for
+multiband envelope/gain history. The next ToTape9 work is parameter/default
+lifecycle validation and source-equivalence testing.
 
 Known runtime map for custom ZDLs:
 
@@ -193,6 +200,7 @@ ZoomMultistompZDL/
 ├── dist/                  release ZDLs to load in Zoom Effect Manager
 ├── src/hardware_probes/       diagnostic ZDLs for runtime ABI experiments
 ├── src/airwindows/        effect sources, manifests, and build scripts
+├── src/custom/            original non-Airwindows effects
 ├── stock_zdls/            tracked 830-file stock ZDL corpus used for comparison
 └── build_all.py           release/probe build entrypoint
 ```

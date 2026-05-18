@@ -162,6 +162,37 @@ def make_airwindows_tape_echo_screen() -> bytes:
     return encode_zoom_rle(c)
 
 
+def make_custom_ott_screen() -> bytes:
+    """OTT bitmap: three-band dynamics display with four paged controls."""
+    c = Canvas()
+
+    c.rect(0, 0, 127, 63)
+    c.draw_text("OTT", 7, 5, scale=3, spacing=1)
+    c.draw_text("CUSTOM", 78, 7, scale=1, spacing=1)
+
+    c.hline(5, 122, 22)
+    for y, amp, phase in ((28, 4.0, 0.0), (31, 2.5, 1.2), (34, 1.5, 2.3)):
+        _draw_wave(c, 8, 119, y, amp, 2.5, phase)
+    c.vline(42, 25, 36)
+    c.vline(84, 25, 36)
+    c.draw_text("L", 21, 25, scale=1, spacing=1)
+    c.draw_text("M", 62, 25, scale=1, spacing=1)
+    c.draw_text("H", 104, 25, scale=1, spacing=1)
+
+    c.draw_text("DRYWET", 7, 38, scale=1, spacing=1)
+    c.draw_text("TIME", 54, 38, scale=1, spacing=1)
+    c.draw_text("OUTPUT", 90, 38, scale=1, spacing=1)
+
+    c.rect(7, 45, 39, 61)
+    c.rect(48, 45, 80, 61)
+    c.rect(89, 45, 121, 61)
+    c.hline(10, 36, 42)
+    c.hline(51, 77, 42)
+    c.hline(92, 118, 42)
+
+    return encode_zoom_rle(c)
+
+
 def make_airwindows_vinyl_screen() -> bytes:
     """ToVinyl4 bitmap: spinning record on the left, three paged knob wells."""
     c = Canvas()

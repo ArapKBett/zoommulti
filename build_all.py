@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 
 PLUGIN_DIR = ROOT / "src" / "airwindows"
+CUSTOM_DIR = ROOT / "src" / "custom"
 PROBE_DIR = ROOT / "src" / "hardware_probes"
 
 # Each entry: (display name, path to its build.py). Keep release builds clean by
@@ -31,6 +32,7 @@ RELEASE_PLUGINS = [
     ("stereochorus", PLUGIN_DIR / "stereochorus" / "build.py"),
     ("verbtiny",    PLUGIN_DIR / "verbtiny"    / "build.py"),
     ("galactic",    PLUGIN_DIR / "galactic"    / "build.py"),
+    ("ott",         CUSTOM_DIR / "ott"         / "build.py"),
 ]
 
 DIAGNOSTIC_PLUGINS = [
