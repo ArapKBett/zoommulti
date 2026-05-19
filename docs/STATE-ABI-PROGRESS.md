@@ -39,11 +39,15 @@ probe-by-probe chronology is preserved in git history through commit
   callback pointer, passes `state[1]`, `_Fx_FLT_LineSel_Coe`, and the
   coefficient-table byte size, then calls the edit handlers. Those edit
   handlers also dereference `state[31]`, `state[21]`, and tail-call
-  `state[7]`. Firmware near `c00a5406` allocates/initializes a 164-byte
-  structure immediately before the ELF magic check. That block starts with
-  `word31 = 1`, so it is not proven to be the exact handler state object, but
-  it is an important loader-adjacent lead and reinforces that stock handlers
-  expect a host-prepared callback environment.
+  `state[7]`.
+* Firmware handler dispatch now gives the exact state base used for stock
+  init/edit calls. The SonicStomp handler invoker at `c00bb460` looks up a
+  descriptor entry, loads entry word 7 (`+0x1C`, the handler pointer), calls
+  `c00c8e6c(slot)`, and branches to the handler with that result in `A4`.
+  `c00c8e6c(slot)` returns `0x11f03000 + slot * 0xD4`, so stock init/edit
+  handlers receive a 212-byte per-slot runtime state object. The earlier
+  164-byte block near `c00a5406` is loader-adjacent scratch, not the main
+  handler state object.
 * Category visibility is partly host/browser state. On the MS-70CDR test
   pedal, Drive-category `ToTape9` could flash but stayed hidden until at least
   one stock Drive effect was also installed.
@@ -153,8 +157,34 @@ suspected fields. It found that the loader-adjacent 164-byte block initializes
 
 That means the stock init state is probably phase-specific or late-bound. The
 custom `InitProbe` stage 3 failure should not be fixed by simply copying the
-`c00a5406` allocation layout; we still need to find the exact state image at
-the moment the embedded ZDL `_init` function is entered.
+`c00a5406` allocation layout; the exact handler state base is now known, but
+we still need to map who writes its callback fields before embedded ZDL
+`_init` is entered.
+
+Handler-dispatch anchor:
+
+The exact handler state pointer is now mapped. `get_entry` at `c00b056c`
+returns a SonicStomp entry pointer for `(slot, entry_index)`, using the
+48-byte entry stride. The generic handler path at `c00bb460` does:
+
+1. `get_entry(slot, entry_index)`.
+2. Load `entry[7]`, the on-disk SonicStomp `func_ptr` field at offset `+0x1C`.
+3. Call `c00c8e6c(slot)`.
+4. Branch to the loaded handler pointer with `A4` still holding the
+   `c00c8e6c` return value.
+
+`c00c8e6c(slot)` is simple:
+
+```
+return 0x11f03000 + slot * 0xD4;
+```
+
+So stock on/off, init, and edit handlers receive a 212-byte per-slot runtime
+state object. Entry index `1` is the effect-name entry and therefore the
+stock init function; user parameters are the later descriptor entries. This
+is the best current anchor for the parameter-materialization bug. Next static
+target: find every firmware writer into `0x11f03000 + slot * 0xD4`, especially
+offsets `+28`, `+84`, `+124`, `+136`, and `+140`.
 
 Dispatch-side lead:
 

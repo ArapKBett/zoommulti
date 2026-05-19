@@ -222,6 +222,9 @@ ELFs, multi-page pictures), they get added there.
 * Stock init/edit parameter materialization still has a missing ABI piece.
   A suspected packed record type `13` lead turned out to be the loader's
   general `DT_FINI` dynamic-tag path, and normal stock ZDLs do not use it.
+  The better anchor is now the firmware handler dispatch path: stock handlers
+  are called with `A4 = 0x11f03000 + slot * 0xD4`, a 212-byte per-slot runtime
+  state block.
 * The `SonicStomp` struct layout is empirical — Exciter's
   `ofd_zdl.txt` shows it sits in `.const` at +0x250 but the field
   definitions aren't documented yet. For now we don't touch it.

@@ -434,6 +434,22 @@ problem, not a ToTape9-specific DSP issue. Custom builds can copy stock handler
 bytes, but they cannot safely call those handlers during custom init until the
 complete init-time callback environment is understood.
 
+Firmware confirms the state pointer passed to these handlers. `c00b056c` is
+the SonicStomp entry lookup: given `(slot, entry_index)`, it returns
+`descriptor_base + entry_index * 0x30`. The generic handler path at `c00bb460`
+then loads word 7 of that entry (`+0x1C`, the `func_ptr`), calls
+`c00c8e6c(slot)`, and branches to the handler pointer. `c00c8e6c` is just:
+
+```
+state = 0x11f03000 + slot * 0xD4
+```
+
+The handler receives that 212-byte per-slot runtime state in `A4`. Entry index
+`0` is the on/off entry, entry index `1` is the effect-name entry and stock
+`_init`, and later entries are user edit handlers. This is now the primary
+anchor for mapping `state[7]`, `state[21]`, `state[31]`, `state + 136`, and
+`state + 140`.
+
 Firmware static RE gives this a nearby loader-state lead. In
 `firmware/extracted/main_os.dis`, the ZDL/ELF load path around `c00a5406`
 allocates 164 bytes, initializes words 0, 1, 15..31, and initializes byte
@@ -442,9 +458,9 @@ to `1` initially and later code near `c00a63e4` tests/clears word 31 while
 adjusting a size/allocation field. Because LineSel's edit handler later treats
 `state[31]` as a callable pointer, this 164-byte block is not proven to be the
 exact handler state passed to stock init; it may be adjacent loader bookkeeping
-or a pre-patched form. It is still a strong lead that stock edit handlers
-expect a host-prepared state/callback environment, not just the bare audio
-`ctx`.
+or a pre-patched form. The later `c00bb460`/`c00c8e6c` dispatch path confirms
+that the main handler state object is instead the 212-byte per-slot block at
+`0x11f03000 + slot * 0xD4`.
 
 `build/find_firmware_state_offsets.py` scans firmware disassembly for these
 suspected fields. The first pass did **not** find a simple "write function
@@ -463,10 +479,11 @@ several loader-side uses that make the lifecycle look more phase-specific:
   output pointer.
 
 So the current firmware-side hypothesis is: the offsets stock init sees as
-callable setup entries may be late-bound or wrapped by host code before control
-enters the embedded ZDL init, while similarly numbered fields in nearby loader
-bookkeeping may still be indices/sentinels. Do not synthesize this state from
-the `c00a5406` allocation alone.
+callable setup entries are populated in the 212-byte per-slot state block,
+while similarly numbered fields in nearby loader bookkeeping may still be
+indices/sentinels. Do not synthesize this state from the `c00a5406` allocation
+alone. The next static search should trace writers to `0x11f03000 + slot *
+0xD4`, especially offsets `+28`, `+84`, `+124`, `+136`, and `+140`.
 
 Firmware dispatch lead: `c00d3bec` is a tiny generic function-pointer caller:
 
