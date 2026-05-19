@@ -220,8 +220,8 @@ ELFs, multi-page pictures), they get added there.
   copy them from the LineSel template and they work; varying them is
   unexplored.
 * Stock init/edit parameter materialization still has a missing ABI piece.
-  The current firmware lead is a packed record type `13` that populates a
-  runtime `word20/21/22` list/matcher triple before later lifecycle dispatch.
+  A suspected packed record type `13` lead turned out to be the loader's
+  general `DT_FINI` dynamic-tag path, and normal stock ZDLs do not use it.
 * The `SonicStomp` struct layout is empirical — Exciter's
   `ofd_zdl.txt` shows it sits in `.const` at +0x250 but the field
   definitions aren't documented yet. For now we don't touch it.

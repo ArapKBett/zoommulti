@@ -168,31 +168,35 @@ through it while walking fields that look like callback lists:
 | `word21` | base/list pointer used during callback iteration |
 | `word22` | byte/count-like value that gates the `word21` iteration |
 
-This is not yet tied to embedded ZDL `_init`, but it is a stronger lead than
-the allocation-time sentinel layout because it shows actual late-bound
-function-pointer dispatch. Next static target: connect these lists to ZDL
-descriptor records or embedded symbol pointers.
+This is not yet tied to embedded ZDL `_init`. The next check was to identify
+the record family feeding these lists; that check reclassified the parser as
+ELF dynamic-table handling rather than normal parameter materialization.
 
-Descriptor/list lead:
+ELF dynamic-table correction:
 
 The loader parser at `c00a61b8..c00a62e0` walks packed 8-byte records from a
-table rooted at its `state[19]`. Record type `13` takes a special path after a
-shared validator call and copies three unaligned record payload values into the
-runtime object reached through `state[27]`:
+table rooted at its `state[19]`, but the explicit type values now match ELF
+dynamic tags rather than SonicStomp/UI descriptors:
 
-| Destination | Source path | Current read |
-|---:|---|---|
-| `word21` | `LDNW *record[1]` | list/template pointer candidate |
-| `word20` | `LDNW *record[1]` after the type-13 branch target advances | paired table/callback candidate |
-| `word22` | `LDNW *+record[1]` from the paired record | count/flag candidate |
+| Type | ELF meaning |
+|---:|---|
+| `12` | `DT_INIT` |
+| `13` | `DT_FINI` |
+| `14` | `DT_SONAME` |
+| `20` | `DT_PLTREL` |
+| `22` | `DT_TEXTREL` |
+| `23` | `DT_JMPREL` |
+| `25..29` | init/fini arrays, sizes, and runpath |
+| `32..33` | preinit array and size |
 
-Several lifecycle paths then pass `word20`/`word21` into `c00c0014`. That
-function is only a wrapper around `c00bff60` with `A8=1`; the underlying helper
-walks 16-byte records, compares byte strings/templates, and may write a matched
-record's second word through an output pointer. This makes the `word20/21/22`
-triple look like descriptor-derived list/matcher state, not simply "call these
-three pointers." The useful next step is to identify which ZDL record family
-emits type `13` and whether it corresponds to init/edit materialization records.
+A corpus scan over 830 stock ZDL files found 825 normal `PT_DYNAMIC` tables.
+None of those 825 contain `DT_INIT`, `DT_FINI`, `DT_INIT_ARRAY`,
+`DT_FINI_ARRAY`, `RUNPATH`, or `PREINIT_ARRAY`. The current custom linker also
+does not emit them. So the previous "type 13 may be descriptor materialization"
+lead should be treated as a loader-general path for uncommon dynamic tags, not
+as the normal stock init/edit parameter path. Parameter materialization should
+stay focused on the SonicStomp init entry and the stock edit-handler state
+callbacks (`state + 136/+140`, `state[31]`, `state[21]`, `state[7]`).
 
 ## ToTape9 Split Status
 
