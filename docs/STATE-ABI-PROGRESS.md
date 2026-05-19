@@ -76,7 +76,8 @@ The minimal custom audio entry map is:
 | `ctx[6]` | confirmed | output accumulator; add into this, do not overwrite |
 | `ctx[11]` | confirmed-use, partial-purpose | current-sample/magic-shuttle destination chain |
 | `ctx[12]` | confirmed-use, partial-purpose | current-sample/magic-shuttle source buffer |
-| `ctx[13]` / `ctx[14]` | stock-used, unresolved | modulation/stereo-adjacent candidates; custom meaning unknown |
+| `ctx[13]` | stock-used, partial | auxiliary buffer pointer; read-only in `AIR` (2x), `BENDCHO`, `FLANGER`, `PHASER`, read+write in `PLATE` (accumulator-style) and `TAPEECH3`. **Not used at all by mono-shape effects** (CHORUS, STCHO, DELAY, HALL, ROOM, LineSel, TREMOLO, AUTOPAN). Pattern fits "additional bus/aux pointer for stereo cross-feed or modulation reverb networks" rather than "right-channel of main wet bus" (which would have forced STCHO to use it). |
+| `ctx[14]` | stock-used, partial | counterpart to `ctx[13]`; same access pattern across the same effects. PLATE writes both ctx[13]/ctx[14] in the same statement region — likely an L/R pair of one aux/accumulator bus. |
 
 Audio buffers are float32. The observed stock/custom-safe pattern processes
 8 samples per channel per callback: `LLLLLLLL RRRRRRRR`.
@@ -134,8 +135,10 @@ Current LineSel init/edit state map:
 | `state[3]` | per-slot pointer `c00ee430 + 12*slot` (no load — `state[3]` is the address itself, so it is a 12-byte per-slot RAM scratch reachable through this pointer) | partial |
 | `state[7]` | tail-call target after stock handler callback setup; template value `c00cc94c` | partial |
 | `state[21]` | second callback pointer used by knob edit handlers; template value `c00c8c80` | partial |
+| `state[24]` | BPM-to-samples helper invoked by tempo-aware edit handlers (TAPEECH3 `DLY_EP3_Calc_DelayTime`); host BPM enters the audio loop through this callback. See [TEMPO-SYNC.md](TEMPO-SYNC.md). | partial |
+| `state[30]` | sync-division / mode query; returns `4` for "free time", else a division index. Template value `0xc00c3a70`. See [TEMPO-SYNC.md](TEMPO-SYNC.md). | partial |
 | `state[29]` | per-slot pointer `c00ee9f0 + 4*slot` (no load — 4-byte per-slot RAM scratch reachable through this pointer) | partial |
-| `state[31]` | first callback pointer used by on/off and knob edit handlers; template value `c00b820c` | partial |
+| `state[31]` | **multi-command host query**, not just "read knob". `B4` is a selector: `B4 = 2..N` reads the Nth knob (LineSel pattern); `B4 = 4` reads free-time raw; `B4 = 6` reads sync-mode boolean. Template value `c00b820c`. See [TEMPO-SYNC.md §3](TEMPO-SYNC.md). | partial |
 | `state[34]` / `state + 136` | setup callback pointer for coefficient-table registration; template value `c00ddda0` | hardware-safe in `InitProbe` stage 2 |
 | `state[35]` / `state + 140` | second setup callback used by many multi-param stock init functions; template value `c00dbae0` | partial |
 

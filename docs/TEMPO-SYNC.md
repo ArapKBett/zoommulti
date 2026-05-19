@@ -153,17 +153,58 @@ Bytes `0x17..0x1A` are the pedal's font-internal music symbols, not
 ASCII. The pattern is `<note-symbol> [<modifier>]` packed into a
 fixed-width 5-byte slot.
 
-## 6. Descriptor side (open)
+## 6. Descriptor side — the sync flag is `pedal_flags & 0x28`
 
-`disp_prm_StompDly_BPM_sync` is a firmware-side helper symbol
-referenced by 192 stock effects (per
-[STOCK-EFFECT-CORPUS.md §8](STOCK-EFFECT-CORPUS.md)). It is bound by
-the SonicStomp descriptor entry for the sync-aware parameter slot.
-The exact descriptor field that says "this slot uses BPM sync display"
-has not been mapped yet — a comparison between the `time` descriptor
-entry in `CHORUS.ZDL` (no sync) vs `DELAY.ZDL` (sync via
-`GetString_1_5000_Sync`) vs `TAPEECH3.ZDL` (sync via
-`GetString_StompDelaySync`) should isolate it. Not done in this pass.
+Confirmed by reading SonicStomp descriptor entries directly. The relevant
+field is `pedal_flags` at byte `+0x2C` of the 48-byte entry (see
+[build/ABI.md §3](../build/ABI.md)). The corpus shows two distinct
+sync-aware descriptor patterns:
+
+**Pattern A — "Time-with-sync" (legacy):** one parameter slot holds both
+the free-time and sync ranges. The same `Time` knob's interpretation
+toggles between ms and division based on the user's sync-mode setting
+(stored elsewhere, e.g. global pedal mode or a second descriptor entry).
+Observed in `DELAY.ZDL`, `ANLGDLY.ZDL`, `TAPEECHO.ZDL`:
+
+| effect | name  | max  | rsv_a (+0x18) | flags | getstr             |
+|---|---|---:|---:|---:|---|
+| `DELAY`    | `Time` | 4022 | 3999 | `0x0028` | `GetString_1_5000_Sync` |
+| `ANLGDLY`  | `Time` | 4022 | 3999 | `0x0028` | (same)                  |
+| `TAPEECHO` | `Time` | 2014 | 1999 | `0x0038` | `GetString_1_2000_Sync` |
+
+`rsv_a` (the "reserved" word at +0x18 noted as
+"non-zero in some delay/pitch effects" in `build/ABI.md`) carries the
+upper bound for the sync-mode value range. `max` is the free-time max
+and `rsv_a + 1` is the sync-mode max. `0x0038` = `0x28 | 0x10`
+adds pedal/expression assignability on top of sync.
+
+**Pattern B — "Separate SYNC slot" (modern):** the `Time` slot stays a
+regular free-time knob (`flags=0x00`, no GetString), and a *separate*
+parameter slot named `Sync` or `SYNC` carries `flags=0x0028` with
+`max=15` and a sync-division GetString:
+
+| effect | name  | max | rsv_a | flags | getstr                          |
+|---|---|---:|---:|---:|---|
+| `TAPEECH3` | `TIME` | 990 | 0 | `0x0000` | (free time, no formatter) |
+| `TAPEECH3` | `SYNC` |  15 | 0 | `0x0028` | `GetString_StompDelaySync` |
+| `STOMPDLY` | `Time` | 599 | 0 | `0x0000` | (free time)               |
+| `STOMPDLY` | `Sync` |  15 | 0 | `0x0028` | `GetString_StompDelaySync` |
+
+Pattern B is cleaner and matches the `state[31]` multi-command path in
+§3-§4: the time_edit handler reads the SYNC slot via `state[31]` with
+`B4=6` and switches modes accordingly. This is the pattern a custom
+plugin should follow.
+
+**Non-sync sanity check:** `CHORUS.ZDL` has no slot with `flags & 0x28`
+anywhere in its descriptor — confirming the bit is not just universally
+set.
+
+So the SDK rule is: **set `pedal_flags = 0x28` on the descriptor entry
+for the sync-mode parameter (Pattern B) — `max = 15`, `GetString` →
+a sync-division formatter, and the time_edit handler reads sync state
+via `state[31]` with `B4=6`.** The linker's existing handling of
+`pedal_flags` already supports this; no schema change is needed in
+`build/linker.py`.
 
 ## 7. Tap tempo (open)
 
@@ -224,6 +265,8 @@ descriptor diff in §6.
   story.
 * [build/ABI.md](../build/ABI.md) §5.1: same.
 
-Those edits are deferred until we either (a) hardware-confirm the
-TAPEECH3 reading or (b) finish the descriptor-side diff in §6, so the
-canonical docs don't grow stale guesses.
+The descriptor-side diff in §6 is now done; the canonical doc updates
+above are partially applied (state[24]/state[30] rows added in
+STATE-ABI-PROGRESS, `reserved_a` and `0x28` flag annotated in
+build/ABI.md). Further edits to EDIT-HANDLER-ABI for the `B4` selector
+remain deferred until we hardware-confirm the TAPEECH3 reading.

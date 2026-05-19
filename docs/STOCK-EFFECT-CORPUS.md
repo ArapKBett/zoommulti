@@ -87,14 +87,15 @@ Notable:
 * **66 effects have zero edit handlers.** Most are bass-amp models
   (`Fx_BASSAMP_*`) with no user-adjustable knobs; they ship fixed
   parameters and rely on the OnOff path only.
-* **Seven stock effects ship with 10 edit handlers**, exceeding the
-  "9-knob firmware ceiling" mentioned in
-  [build/ABI.md §3.1](../build/ABI.md). They are all dual-engine
-  effects: `DUALDIGD`, `DUAL_REV`, `FLTERPPD`, plus the MS-60B and
-  MS-70CDR-prefixed variants of `DUALDIGD` and `FLTERPPD`. This
-  contradicts the docs and is worth a hardware check: either the
-  ceiling is actually 10, or these effects use a paging/grouping
-  mechanism we have not mapped yet. Tracked as an open question.
+* **The "10 edit handlers" rows are a counting artifact, not a
+  real ceiling break.** `DUALDIGD`, `DUAL_REV`, and `FLTERPPD`
+  (plus their MS-60B and MS-70CDR variants) each export 10 `_edit`
+  symbols, but reading the SonicStomp descriptor directly shows only
+  **9 user-knob entries**. The extra symbols are link-mode handlers
+  (e.g. `Fx_DLY_DualDigiD_timeLR_edit` controls both `TimeA` and
+  `TimeB` together) that are exported but only bound conditionally,
+  not as independent descriptor entries. The 9-knob ceiling in
+  [build/ABI.md §3.1](../build/ABI.md) is correct.
 
 ## 4. Audio-section placement (`.audio` vs `.text`)
 
@@ -227,11 +228,9 @@ effect imports. The Top 20 (excluding C6x runtime helpers
 
 ## 9. Open questions surfaced by this pass
 
-* **10-knob effects.** `DUALDIGD`/`DUAL_REV`/`FLTERPPD` and their
-  per-pedal variants ship 10 edit handlers. Either the documented
-  9-knob ceiling is wrong or these effects use a special grouping.
-  Map the descriptor layout for one of them and update
-  [build/ABI.md §3.1](../build/ABI.md).
+* ~~**10-knob effects.**~~ Closed: the 10-edit count was a counting
+  artifact from link-mode handlers (see §3). 9 knobs is the actual
+  descriptor ceiling.
 * **BPM/tempo wiring.** The `GetString_*_Sync` and `disp_prm_BPM_sync`
   callbacks are stock-shared; the path that delivers the host BPM into
   the audio loop is not yet mapped. Next static step: disassemble

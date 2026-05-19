@@ -105,8 +105,13 @@ struct SonicStompEntry {                  // 48 bytes
     uint32_t default_val;     // +0x10  default integer
     uint32_t pedal_max;       // +0x14  same as max_val if pedal-assignable,
                               //        0 otherwise
-    uint32_t reserved_a;      // +0x18  usually 0; non-zero in some
-                              //        delay/pitch effects (sub-range?)
+    uint32_t reserved_a;      // +0x18  sync-mode upper bound (used by
+                              //        Pattern A "time-with-sync" delays).
+                              //        On free-time entries it is 0.
+                              //        For `DELAY`/`ANLGDLY` it is 3999
+                              //        (vs `max=4022` for free time); for
+                              //        `TAPEECHO` it is 1999 (vs 2014).
+                              //        See docs/TEMPO-SYNC.md §6.
     uint32_t func_ptr;        // +0x1C  PRIMARY handler (relocated, ABS32):
                               //          OnOff entry  → onf
                               //          name entry   → init
@@ -127,7 +132,7 @@ struct SonicStompEntry {                  // 48 bytes
 |--------|-----|-----------------------------------------------------------|
 | `0x04` | 2   | **End-of-table sentinel** — last parameter entry          |
 | `0x10` | 4   | Pedal/expression-assignable parameter marker              |
-| `0x28` | 3+5 | Tempo-synced (both bits required)                         |
+| `0x28` | 3+5 | Tempo-synced (both bits required) — see [docs/TEMPO-SYNC.md](../docs/TEMPO-SYNC.md) for the two stock patterns (legacy "time-with-sync" using `reserved_a` vs modern "separate SYNC slot") |
 
 Common observed values: `0x00` (regular knob), `0x04` (last-param,
 not pedal), `0x10` (pedal/expression assignable), `0x14` (last +
