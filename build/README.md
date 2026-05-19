@@ -226,7 +226,9 @@ ELFs, multi-page pictures), they get added there.
   are called with `A4 = 0x11f03000 + slot * 0xD4`, a 212-byte per-slot runtime
   state block. The template writer at `c00c8ac0` initializes the critical
   callback fields (`state[7]`, `state[21]`, `state[31]`, `+136`, `+140`) for
-  all six slots.
+  all six slots. It also seeds per-slot data fields, including `state[1]` from
+  `c00ee8e8 + 4*slot`, so the remaining parameter bug is probably in those
+  materialization/state sources rather than the DSP body.
 * The `SonicStomp` struct layout is empirical — Exciter's
   `ofd_zdl.txt` shows it sits in `.const` at +0x250 but the field
   definitions aren't documented yet. For now we don't touch it.

@@ -463,6 +463,21 @@ LineSel/Exciter handlers use have these initial values:
 | `state[34]` | `+0x88` | `c00ddda0` | coefficient-table setup callback (`state + 136`) |
 | `state[35]` | `+0x8c` | `c00dbae0` | second setup callback (`state + 140`) |
 
+The same template writer also seeds non-callback per-slot fields:
+
+| Field | Template source | Current read |
+|---:|---|---|
+| `state[0]` | literal `0` | source for the first callback's `A4`; likely patched later or phase-dependent |
+| `state[1]` | `*(c00ee8e8 + 4*slot)` | likely setup/materialization base |
+| `state[2]` | `*(c00ee900 + 4*slot)` | unresolved per-slot pointer/value |
+| `state[3]` | `c00ee430 + 12*slot` | unresolved 12-byte per-slot record |
+| `state[29]` | `c00ee9f0 + 4*slot` | unresolved per-slot pointer/value |
+
+The currently extracted firmware chunks do not cover `c00ee430`, `c00ee8e8`,
+`c00ee900`, or `c00ee9f0`, so their contents still need a missing data-segment
+map or runtime dump. This is now the most direct lead for the ToTape9
+first-touch/reload parameter bug.
+
 These values mean the init/edit callback table is not absent when custom init
 runs. The remaining init-handler failure likely involves some other required
 state field or phase/argument condition.

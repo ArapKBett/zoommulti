@@ -128,10 +128,13 @@ Current LineSel init/edit state map:
 
 | Field | Observed use | Confidence |
 |---:|---|---|
-| `state[0]` | passed as `A4` to the first stock on/off/edit callback | partial |
-| `state[1]` | loaded by init setup and handlers; likely parameter/materialization base | partial |
+| `state[0]` | initial template value `0`; passed as `A4` to the first stock on/off/edit callback, so it is probably patched later or phase-dependent | partial |
+| `state[1]` | per-slot table value loaded from `c00ee8e8 + 4*slot`; stock init/setup and handlers consume it as a likely parameter/materialization base | partial |
+| `state[2]` | per-slot table value loaded from `c00ee900 + 4*slot` | unknown |
+| `state[3]` | per-slot pointer `c00ee430 + 12*slot` | unknown |
 | `state[7]` | tail-call target after stock handler callback setup; template value `c00cc94c` | partial |
 | `state[21]` | second callback pointer used by knob edit handlers; template value `c00c8c80` | partial |
+| `state[29]` | per-slot pointer/value `c00ee9f0 + 4*slot` | unknown |
 | `state[31]` | first callback pointer used by on/off and knob edit handlers; template value `c00b820c` | partial |
 | `state[34]` / `state + 136` | setup callback pointer for coefficient-table registration; template value `c00ddda0` | hardware-safe in `InitProbe` stage 2 |
 | `state[35]` / `state + 140` | second setup callback used by many multi-param stock init functions; template value `c00dbae0` | partial |
@@ -206,6 +209,21 @@ seen in stock LineSel/Exciter disassembly:
 | `state[31]` | `+0x7c` | `c00b820c` | first callback in on/off and knob handlers |
 | `state[34]` | `+0x88` | `c00ddda0` | coefficient-table setup callback at `state + 136` |
 | `state[35]` | `+0x8c` | `c00dbae0` | second setup callback at `state + 140` |
+
+The same loop also shows the non-callback slot sources:
+
+| Field | Template source | Current read |
+|---:|---|---|
+| `state[0]` | literal `0` | source for the first callback's `A4`; likely patched later or phase-dependent |
+| `state[1]` | `*(c00ee8e8 + 4*slot)` | likely setup/materialization base |
+| `state[2]` | `*(c00ee900 + 4*slot)` | unresolved per-slot pointer/value |
+| `state[3]` | `c00ee430 + 12*slot` | unresolved 12-byte per-slot record |
+| `state[29]` | `c00ee9f0 + 4*slot` | unresolved per-slot pointer/value |
+
+The current extracted firmware chunks do not include `c00ee430`,
+`c00ee8e8`, `c00ee900`, or `c00ee9f0`. Those values probably live in a
+non-extracted data segment or are RAM-initialized, so the next static path is to
+map/extract that missing region or identify the writer that fills it.
 
 This makes `InitProbe` stage 3 more interesting: the cloned edit handler should
 have had the same template callback addresses available by the time stock-style
