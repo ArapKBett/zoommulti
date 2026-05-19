@@ -102,6 +102,7 @@ Audio buffers are float32. The observed stock/custom-safe pattern processes
 | `TapeEcho4` | Custom Airwindows-inspired tape echo; builds with about 512 KB of ctx[3] delay state, no `.fardata`, no `.text`, and no object relocations. Tempo control is BPM+division with stock tempo descriptor flags; true host tap-tempo behavior is pending. |
 | `OTT` | Custom Dynamics-category OTT-style compressor; builds with small ctx[3] state, no `.fardata`, no `.text`, and no object relocations. Hardware result pending. |
 | `InitProbe` | Object-defined init setup call loads; init-time cloned edit-handler call freezes on boot. |
+| `SyncProbe` | One-byte patch of `linesel_handlers.bin` (`state[31]→state[24]`) plus a `pedal_flags=0x28, max=15` descriptor entry; loads, unbypass passes audio, knob interaction does not freeze, tap tempo (left-knob click) does not freeze. Returned value is static under tap tempo with `B4=2`, so `state[24]` is reachable but the call protocol is still wrong. Confirms the descriptor + handler shape for Pattern B sync slots is load-safe on custom ZDLs. |
 
 ## Init And Edit-Handler ABI Status
 
@@ -135,7 +136,7 @@ Current LineSel init/edit state map:
 | `state[3]` | per-slot pointer `c00ee430 + 12*slot` (no load — `state[3]` is the address itself, so it is a 12-byte per-slot RAM scratch reachable through this pointer) | partial |
 | `state[7]` | tail-call target after stock handler callback setup; template value `c00cc94c` | partial |
 | `state[21]` | second callback pointer used by knob edit handlers; template value `c00c8c80` | partial |
-| `state[24]` | BPM-to-samples helper invoked by tempo-aware edit handlers (TAPEECH3 `DLY_EP3_Calc_DelayTime`); host BPM enters the audio loop through this callback. See [TEMPO-SYNC.md](TEMPO-SYNC.md). | partial |
+| `state[24]` | BPM-to-samples helper invoked by tempo-aware edit handlers (TAPEECH3 `DLY_EP3_Calc_DelayTime`); host BPM enters the audio loop through this callback. **Hardware-confirmed reachable from custom-handler context** via `SyncProbe` (2026-05-19): a one-byte patch of `linesel_handlers.bin` that loads `state[24]` instead of `state[31]` boots, allows knob interaction, and survives tap tempo. With the LineSel knob_id constant `B4=2` the returned value is static (doesn't change on tap tempo) — the argument convention still needs work, but the callback is reachable. See [TEMPO-SYNC.md](TEMPO-SYNC.md). | partial |
 | `state[30]` | sync-division / mode query; returns `4` for "free time", else a division index. Template value `0xc00c3a70`. See [TEMPO-SYNC.md](TEMPO-SYNC.md). | partial |
 | `state[29]` | per-slot pointer `c00ee9f0 + 4*slot` (no load — 4-byte per-slot RAM scratch reachable through this pointer) | partial |
 | `state[31]` | **multi-command host query**, not just "read knob". `B4` is a selector: `B4 = 2..N` reads the Nth knob (LineSel pattern); `B4 = 4` reads free-time raw; `B4 = 6` reads sync-mode boolean. Template value `c00b820c`. See [TEMPO-SYNC.md §3](TEMPO-SYNC.md). | partial |
