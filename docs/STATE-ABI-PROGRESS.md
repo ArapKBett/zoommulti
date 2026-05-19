@@ -1,6 +1,6 @@
 # State ABI Progress
 
-Last updated: 2026-05-19
+Last updated: 2026-05-19 (per-slot table region reinterpreted as RAM)
 
 This is the compact current-state map for the hardware probes. The older
 probe-by-probe chronology is preserved in git history through commit
@@ -129,12 +129,12 @@ Current LineSel init/edit state map:
 | Field | Observed use | Confidence |
 |---:|---|---|
 | `state[0]` | initial template value `0`; passed as `A4` to the first stock on/off/edit callback, so it is probably patched later or phase-dependent | partial |
-| `state[1]` | per-slot table value loaded from `c00ee8e8 + 4*slot`; stock init/setup and handlers consume it as a likely parameter/materialization base | partial |
-| `state[2]` | per-slot table value loaded from `c00ee900 + 4*slot` | unknown |
-| `state[3]` | per-slot pointer `c00ee430 + 12*slot` | unknown |
+| `state[1]` | per-slot table value loaded from `c00ee8e8 + 4*slot`; stock init/setup and handlers consume it as a likely parameter/materialization base. Table backing RAM is not in `Main.bin`; populated at runtime by code we have not yet located. | partial |
+| `state[2]` | per-slot table value loaded from `c00ee900 + 4*slot`; same RAM-table caveat as `state[1]`. | unknown |
+| `state[3]` | per-slot pointer `c00ee430 + 12*slot` (no load — `state[3]` is the address itself, so it is a 12-byte per-slot RAM scratch reachable through this pointer) | partial |
 | `state[7]` | tail-call target after stock handler callback setup; template value `c00cc94c` | partial |
 | `state[21]` | second callback pointer used by knob edit handlers; template value `c00c8c80` | partial |
-| `state[29]` | per-slot pointer/value `c00ee9f0 + 4*slot` | unknown |
+| `state[29]` | per-slot pointer `c00ee9f0 + 4*slot` (no load — 4-byte per-slot RAM scratch reachable through this pointer) | partial |
 | `state[31]` | first callback pointer used by on/off and knob edit handlers; template value `c00b820c` | partial |
 | `state[34]` / `state + 136` | setup callback pointer for coefficient-table registration; template value `c00ddda0` | hardware-safe in `InitProbe` stage 2 |
 | `state[35]` / `state + 140` | second setup callback used by many multi-param stock init functions; template value `c00dbae0` | partial |
@@ -215,15 +215,50 @@ The same loop also shows the non-callback slot sources:
 | Field | Template source | Current read |
 |---:|---|---|
 | `state[0]` | literal `0` | source for the first callback's `A4`; likely patched later or phase-dependent |
-| `state[1]` | `*(c00ee8e8 + 4*slot)` | likely setup/materialization base |
-| `state[2]` | `*(c00ee900 + 4*slot)` | unresolved per-slot pointer/value |
-| `state[3]` | `c00ee430 + 12*slot` | unresolved 12-byte per-slot record |
-| `state[29]` | `c00ee9f0 + 4*slot` | unresolved per-slot pointer/value |
+| `state[1]` | `*(c00ee8e8 + 4*slot)` (LDW) | likely setup/materialization base |
+| `state[2]` | `*(c00ee900 + 4*slot)` (LDW) | unresolved per-slot value |
+| `state[3]` | pointer `c00ee430 + 12*slot` (no load) | 12-byte per-slot RAM scratch, addressable via this pointer |
+| `state[29]` | pointer `c00ee9f0 + 4*slot` (no load) | 4-byte per-slot RAM scratch slot |
 
-The current extracted firmware chunks do not include `c00ee430`,
-`c00ee8e8`, `c00ee900`, or `c00ee9f0`. Those values probably live in a
-non-extracted data segment or are RAM-initialized, so the next static path is to
-map/extract that missing region or identify the writer that fills it.
+The full TIPA scan of `firmware/Main.bin` confirms the gap `c00ed164..c00eebb4`
+is not present in any YSX chunk. All 11 YSX sections were parsed (header is
+`'YSX'` + 4 LE load-addr + 4 LE size, 11 bytes total) and they cover
+`c009dfb0..c00ed164` then resume at `c00eebb4..c00f1364`, plus the
+`11817000..1181dd60` RAM-side data sections. So the c00ee* tables are not
+"unextracted static data"; they are uninitialized firmware RAM that some
+runtime code populates after boot.
+
+Distinction made explicit by re-reading the template-writer disassembly:
+
+* `state[1]` and `state[2]` are loaded with `LDW` from `c00ee8e8 + 4*slot` and
+  `c00ee900 + 4*slot`. Those are the only true table reads. Whatever non-zero
+  values live there must be written by some other firmware path.
+* `state[3]` is `B5` itself, which is the address `c00ee430 + 12*slot`. There is
+  no load. `state[3]` is therefore a per-slot pointer into RAM. The 12-byte
+  stride matches the slot count (6), so the table is 72 bytes of per-slot RAM
+  scratch reachable through `state[3]`.
+* `state[29]` is `B3` itself, which is the address `c00ee9f0 + 4*slot`. Same
+  pattern — a 4-byte per-slot RAM cell reachable through `state[29]` (24 bytes
+  total for six slots).
+
+No stores into `c00ee430/c00ee8e8/c00ee900/c00ee9f0` were found in
+`main_os.dis`, `chunk2.dis`, or in the wrapped disassemblies of
+`chunk_c00ef*.out` and the `chunk_1181*.out` RAM-side chunks. The c00ee8e8 and
+c00ee900 reader at `c00d2080+` consumes the loaded value and feeds it into
+`CALLP 0xc00cc94c` (the `state[7]` template callback), confirming the table
+acts as a per-slot handle that flows into stock state[7] dispatch.
+
+Open RE leads:
+
+* Indirect writers (`STW B5, *Ax` where `Ax` was previously set to a c00ee*
+  address) are not yet covered by the current pattern scan; a register-tracking
+  scan that follows MVK/MVKH pairs across MV.L moves would catch them.
+* Effect-activation/preset-load code (not yet identified) is the most likely
+  populator of `c00ee8e8`/`c00ee900` since those values are consumed by stock
+  state[7] dispatch.
+* `state[3]` and `state[29]` being writable RAM pointers means stock handlers
+  may use them as private per-slot scratch; checking stock edit handlers for
+  loads/stores through `state[3]`/`state[29]` is the cheap next step.
 
 This makes `InitProbe` stage 3 more interesting: the cloned edit handler should
 have had the same template callback addresses available by the time stock-style
