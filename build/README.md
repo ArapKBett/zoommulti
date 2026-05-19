@@ -27,6 +27,7 @@ ZoomMultistompZDL/
 │   ├── linker.py              # static linker (.obj → .ZDL)
 │   ├── zdl.py                 # ZDL container parser/writer + label patcher
 │   ├── analyze_stock_init_handlers.py  # stock init/edit callback scanner
+│   ├── find_firmware_state_offsets.py  # firmware-side state-field scanner
 │   ├── linesel_handlers.bin   # onf + knob1 + knob2 + RTS helpers (LineSel)
 │   ├── air_knob3_edit.bin     # knob3 edit handler (AIR mix_edit)
 │   ├── divf_rts.bin           # __c6xabi_divf RTS code

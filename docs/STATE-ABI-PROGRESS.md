@@ -143,6 +143,19 @@ gap: we can run DSP safely, and we can let stock handlers run from normal UI
 interaction, but we do not yet know how to recreate the full stock init-time
 edit-handler callback environment for custom init.
 
+Firmware-side scan:
+
+`build/find_firmware_state_offsets.py` now scans `main_os.dis` for the same
+suspected fields. It found that the loader-adjacent 164-byte block initializes
+`+128/+136/+140/+148/+152` to `-1`, `+132/+144/+156` to `0`, and word 31 to
+`1` before the ELF magic check. Later firmware regions write/read `+140` and
+`+136` as table indices/sentinels rather than obvious function pointers.
+
+That means the stock init state is probably phase-specific or late-bound. The
+custom `InitProbe` stage 3 failure should not be fixed by simply copying the
+`c00a5406` allocation layout; we still need to find the exact state image at
+the moment the embedded ZDL `_init` function is entered.
+
 ## ToTape9 Split Status
 
 | Variant | Result | Meaning |

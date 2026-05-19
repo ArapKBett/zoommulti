@@ -446,6 +446,28 @@ or a pre-patched form. It is still a strong lead that stock edit handlers
 expect a host-prepared state/callback environment, not just the bare audio
 `ctx`.
 
+`build/find_firmware_state_offsets.py` scans firmware disassembly for these
+suspected fields. The first pass did **not** find a simple "write function
+pointer to `state + 136`, then call stock init" pattern. Instead, it found
+several loader-side uses that make the lifecycle look more phase-specific:
+
+* The allocation/init block at `c00a5406..c00a54a8` fills byte offsets
+  `+128`, `+136`, `+140`, `+148`, and `+152` with `-1`, and fills `+132`,
+  `+144`, and `+156` with `0`.
+* The region around `c00a5ae4..c00a5b02` writes a runtime value to `+140` and
+  another table-derived value to `+156`.
+* The region around `c00a65f4..c00a6678` resets `+140`/`+152`/`+156` and then
+  reads `+140` as an index into a table rooted at `state[19]`.
+* The region around `c00a6f56..c00a6f72` reads `+136` as an index into the
+  same kind of table-rooted lookup and writes the resulting value to an
+  output pointer.
+
+So the current firmware-side hypothesis is: the offsets stock init sees as
+callable setup entries may be late-bound or wrapped by host code before control
+enters the embedded ZDL init, while similarly numbered fields in nearby loader
+bookkeeping may still be indices/sentinels. Do not synthesize this state from
+the `c00a5406` allocation alone.
+
 For Exciter, init at `.text+0x5c0` (per `Fx_FLT_Exciter_init` symbol)
 should follow the same pattern — invoke onf, then each edit handler.
 
