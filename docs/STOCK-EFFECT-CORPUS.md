@@ -14,6 +14,17 @@ Rerun any time the corpus changes:
 python3 build/analyze_stock_corpus.py
 ```
 
+Dump the actual SonicStomp descriptor entries for one or more ZDLs:
+
+```
+python3 build/dump_zdl_descriptor.py stock_zdls/MS-70CDR_LINESEL.ZDL
+```
+
+This is now the preferred way to inspect user-facing parameters, because it
+reads the 0x30-byte entries the firmware handler dispatcher actually walks.
+Counting exported `_edit` symbols is still useful, but it overcounts shared or
+conditional edit handlers.
+
 Schema (columns, current revision):
 
 `name, file_size, header_size, extra_header_len, truncated, real_type,
@@ -96,6 +107,24 @@ Notable:
   `TimeB` together) that are exported but only bound conditionally,
   not as independent descriptor entries. The 9-knob ceiling in
   [build/ABI.md §3.1](../build/ABI.md) is correct.
+
+Direct descriptor parsing gives this actual user-knob distribution across the
+818 stock ZDLs where the `OnOff` descriptor table is found:
+
+| descriptor user knobs | count |
+|---:|---:|
+| 2 | 25 |
+| 3 | 109 |
+| 4 | 88 |
+| 5 | 158 |
+| 6 | 187 |
+| 7 | 80 |
+| 8 | 57 |
+| 9 | 114 |
+
+This explains why symbol counting and UI behavior sometimes disagreed: stock
+ZDLs often export helper edit handlers that are not separate descriptor
+entries, and some descriptor entries intentionally share the same handler.
 
 ## 4. Audio-section placement (`.audio` vs `.text`)
 
@@ -236,6 +265,16 @@ effect imports. The Top 20 (excluding C6x runtime helpers
   the audio loop is not yet mapped. Next static step: disassemble
   `disp_prm_BPM_sync` and see what `ctx[]` field or host callback the
   audio function reads.
+* **Descriptor flags.** Direct descriptor parsing found these parameter-entry
+  flag values: `0x00`, `0x10`, `0x04`, `0x14`, `0x28`, `0x38`, `0x50`, and
+  rare `0x2c`. The `0x04` bit is the final-entry sentinel. `0x28`/`0x38`
+  are tempo/sync-shaped entries; e.g. `MS-70CDR_TAPEECH3` has `TIME` and
+  `SYNC` entries sharing `Fx_DLY_TapeEcho3_time_edit`, with `SYNC` using
+  `max=15`, `default=0`, `flags=0x28`.
+* **Shared edit handlers.** At least 145 stock ZDLs have multiple descriptor
+  entries bound to the same handler. Examples include `Time`/`Sync` pairs,
+  dual-rate controls, and grouped EQ bands. This is important for custom
+  effects: the descriptor table, not the exported symbol list, defines the UI.
 * **Truncated reverb files.** Five stock reverbs ship as truncated
   blobs. Whether they are placeholders (factory firmware bug) or
   loaded via a fallback path is open. They are excluded from all
