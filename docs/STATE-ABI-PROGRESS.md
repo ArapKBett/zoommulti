@@ -48,6 +48,11 @@ probe-by-probe chronology is preserved in git history through commit
   handlers receive a 212-byte per-slot runtime state object. The earlier
   164-byte block near `c00a5406` is loader-adjacent scratch, not the main
   handler state object.
+* Firmware state-template init now maps the first critical callback fields.
+  `c00c8ac0..c00c8e64` writes a 53-word template into each of the six
+  per-slot handler states, advancing by `0xD4`. Initial template values include
+  `state[7] = c00cc94c`, `state[21] = c00c8c80`, `state[31] = c00b820c`,
+  `state[34] = c00ddda0`, and `state[35] = c00dbae0`.
 * Category visibility is partly host/browser state. On the MS-70CDR test
   pedal, Drive-category `ToTape9` could flash but stayed hidden until at least
   one stock Drive effect was also installed.
@@ -125,10 +130,11 @@ Current LineSel init/edit state map:
 |---:|---|---|
 | `state[0]` | passed as `A4` to the first stock on/off/edit callback | partial |
 | `state[1]` | loaded by init setup and handlers; likely parameter/materialization base | partial |
-| `state[7]` | tail-call target after stock handler callback setup | partial |
-| `state[21]` | second callback pointer used by knob edit handlers | partial |
-| `state[31]` | first callback pointer used by on/off and knob edit handlers | partial |
-| `state + 136` | setup callback pointer for coefficient-table registration | hardware-safe in `InitProbe` stage 2 |
+| `state[7]` | tail-call target after stock handler callback setup; template value `c00cc94c` | partial |
+| `state[21]` | second callback pointer used by knob edit handlers; template value `c00c8c80` | partial |
+| `state[31]` | first callback pointer used by on/off and knob edit handlers; template value `c00b820c` | partial |
+| `state[34]` / `state + 136` | setup callback pointer for coefficient-table registration; template value `c00ddda0` | hardware-safe in `InitProbe` stage 2 |
+| `state[35]` / `state + 140` | second setup callback used by many multi-param stock init functions; template value `c00dbae0` | partial |
 
 Stock-sample scan:
 
@@ -182,9 +188,30 @@ return 0x11f03000 + slot * 0xD4;
 So stock on/off, init, and edit handlers receive a 212-byte per-slot runtime
 state object. Entry index `1` is the effect-name entry and therefore the
 stock init function; user parameters are the later descriptor entries. This
-is the best current anchor for the parameter-materialization bug. Next static
-target: find every firmware writer into `0x11f03000 + slot * 0xD4`, especially
-offsets `+28`, `+84`, `+124`, `+136`, and `+140`.
+is the best current anchor for the parameter-materialization bug.
+
+Per-slot state template:
+
+`c00c8ac0..c00c8e64` initializes the handler state block before stock handlers
+run. It starts with `A4 = 0x11f03000`, `A15 = 0xD4`, and `B0 = 6`, writes a
+53-word template, then advances `A4 += 0xD4` until all six slots are covered.
+
+The template gives concrete initial values for the callback fields already
+seen in stock LineSel/Exciter disassembly:
+
+| Field | Byte offset | Initial template value | Current read |
+|---:|---:|---|---|
+| `state[7]` | `+0x1c` | `c00cc94c` | stock edit handlers tail through this path |
+| `state[21]` | `+0x54` | `c00c8c80` | second callback in many knob/value handlers |
+| `state[31]` | `+0x7c` | `c00b820c` | first callback in on/off and knob handlers |
+| `state[34]` | `+0x88` | `c00ddda0` | coefficient-table setup callback at `state + 136` |
+| `state[35]` | `+0x8c` | `c00dbae0` | second setup callback at `state + 140` |
+
+This makes `InitProbe` stage 3 more interesting: the cloned edit handler should
+have had the same template callback addresses available by the time stock-style
+init ran. The remaining missing detail may be a phase flag, argument register,
+or per-effect field (`state[0]`, `state[1]`, descriptor-derived values) rather
+than simply absent callback pointers.
 
 Dispatch-side lead:
 

@@ -450,6 +450,23 @@ The handler receives that 212-byte per-slot runtime state in `A4`. Entry index
 anchor for mapping `state[7]`, `state[21]`, `state[31]`, `state + 136`, and
 `state + 140`.
 
+The state template writer at `c00c8ac0..c00c8e64` initializes all six per-slot
+state blocks. It starts at `0x11f03000`, uses a stride of `0xD4`, writes a
+53-word template, then repeats six times. The callback fields that stock
+LineSel/Exciter handlers use have these initial values:
+
+| Field | Byte offset | Initial template value | Known use |
+|---:|---:|---|---|
+| `state[7]` | `+0x1c` | `c00cc94c` | tail-called by on/off and some edit handlers |
+| `state[21]` | `+0x54` | `c00c8c80` | second materialization callback in value handlers |
+| `state[31]` | `+0x7c` | `c00b820c` | first materialization callback in on/off/edit handlers |
+| `state[34]` | `+0x88` | `c00ddda0` | coefficient-table setup callback (`state + 136`) |
+| `state[35]` | `+0x8c` | `c00dbae0` | second setup callback (`state + 140`) |
+
+These values mean the init/edit callback table is not absent when custom init
+runs. The remaining init-handler failure likely involves some other required
+state field or phase/argument condition.
+
 Firmware static RE gives this a nearby loader-state lead. In
 `firmware/extracted/main_os.dis`, the ZDL/ELF load path around `c00a5406`
 allocates 164 bytes, initializes words 0, 1, 15..31, and initializes byte
@@ -482,8 +499,9 @@ So the current firmware-side hypothesis is: the offsets stock init sees as
 callable setup entries are populated in the 212-byte per-slot state block,
 while similarly numbered fields in nearby loader bookkeeping may still be
 indices/sentinels. Do not synthesize this state from the `c00a5406` allocation
-alone. The next static search should trace writers to `0x11f03000 + slot *
-0xD4`, especially offsets `+28`, `+84`, `+124`, `+136`, and `+140`.
+alone. The next static search should map the non-callback fields consumed by
+stock edit handlers, especially `state[0]`, `state[1]`, and any descriptor-
+derived per-parameter fields.
 
 Firmware dispatch lead: `c00d3bec` is a tiny generic function-pointer caller:
 
