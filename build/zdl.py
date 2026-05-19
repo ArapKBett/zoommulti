@@ -34,8 +34,12 @@ INFO_PAYLOAD_SIZE = 48
 FX_TYPES = {
     1: "Dynamics", 2: "Filter", 3: "Drive", 4: "GuitarAmp",
     5: "BassAmp",  6: "Modulation", 7: "SFX", 8: "Delay",
-    9: "Reverb",  11: "PedalOperated", 15: "ExtraDLL",
-    20: "BassDrive", 22: "BassDrive",
+    9: "Reverb",  11: "PedalOperated",
+    12: "BassDrive",   # corpus: Fx_BASSDRV_*; e.g. MS-60B_BASSMUFF
+    13: "BassPreamp",  # corpus: Fx_BASSPREAMP_*; e.g. MS-60B_BASS_PRE
+    15: "ExtraDLL",
+    20: "BassDrive",   # corpus: Fx_BASSDRV_*
+    22: "BassPreamp",  # corpus: Fx_BASSPREAMP_* (was misnamed BassDrive)
 }
 
 
