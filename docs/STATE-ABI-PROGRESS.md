@@ -37,6 +37,11 @@ probe-by-probe chronology is preserved in git history through commit
 * Category visibility is partly host/browser state. On the MS-70CDR test
   pedal, Drive-category `ToTape9` could flash but stayed hidden until at least
   one stock Drive effect was also installed.
+* A hand-decoded ZD2 `Fx_SFX_LineSel` audio function matches the ZDL LineSel
+  signal-flow semantics even though the context layout and code placement
+  differ. It reinforces that LineSel uses a coefficient table (`K0`, `K4`,
+  `K5`, `K6`) plus effect input/output, pedal output accumulator, and a
+  per-sample current-sample store.
 
 ## Runtime Map
 
@@ -50,8 +55,8 @@ The minimal custom audio entry map is:
 | `ctx[4]` | confirmed | dry/input buffer |
 | `ctx[5]` | confirmed | effect/wet buffer |
 | `ctx[6]` | confirmed | output accumulator; add into this, do not overwrite |
-| `ctx[11]` | confirmed-use, unknown-purpose | magic shuttle destination |
-| `ctx[12]` | confirmed-use, unknown-purpose | magic shuttle source |
+| `ctx[11]` | confirmed-use, partial-purpose | current-sample/magic-shuttle destination chain |
+| `ctx[12]` | confirmed-use, partial-purpose | current-sample/magic-shuttle source buffer |
 | `ctx[13]` / `ctx[14]` | stock-used, unresolved | modulation/stereo-adjacent candidates; custom meaning unknown |
 
 Audio buffers are float32. The observed stock/custom-safe pattern processes
@@ -127,6 +132,28 @@ Next ToTape9 work:
 4. Separately build a tiny-DSP page 2/3 parameter probe using synthesized
    LineSel-cloned handlers to prove `params[7..13]` updates independently from
    the tape kernel.
+
+## LineSel / Parameter-Materialization Clue
+
+A hand-decoded ZD2 `Fx_SFX_LineSel` function is not ABI-identical to the ZDL
+`Fx_FLT_LineSel`, but it is semantically close. The ZD2 version loads a
+coefficient table from `A4`, then uses `K0`, `K4`, `K5`, and `K6` while moving
+samples between effect input/output and pedal output. The ZDL MS-70CDR
+LineSel disassembly shows the same coefficient roles through `ctx[1]`.
+
+This helps explain the parameter/default bug. Stock LineSel is not relying on
+raw UI fields magically being valid in the audio loop; its init/edit-handler
+path materializes coefficient-table values before audio uses them. Our custom
+builds borrow or synthesize LineSel edit handlers but still do not have a safe
+general way to call those handlers from custom init. Therefore a fresh load or
+reload can expose zero/unmaterialized user slots until the user touches a
+parameter. Audio-side default fallbacks and per-parameter materialization flags
+remain the safest current workaround.
+
+The ZD2 snippet also makes `ctx[11]`/`ctx[12]` less mysterious for ZDLs: the
+"magic shuttle" appears to be a current-sample store path used by LineSel-style
+host callbacks, not arbitrary decoration. Preserve it exactly unless a probe
+proves a narrower rule.
 
 ## Reverb Port Status
 

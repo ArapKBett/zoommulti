@@ -334,7 +334,14 @@ A4 = ctx (state pointer; arg 0)
 `ctx[11]` / `ctx[12]` are a side-channel the original effects all
 read-and-rewrite once per inner-loop iteration. Skipping the shuttle
 may break downstream effects; the safe pattern is to copy verbatim. The
-purpose is unknown.
+purpose is only partially mapped.
+
+New ZD2 clue: a hand-decoded `Fx_SFX_LineSel` uses a field described as a
+pointer to a "current sample" store and writes the current input sample there
+inside the sample loop. The ZDL `Fx_FLT_LineSel` disassembly performs the same
+kind of per-sample copy through the `ctx[11]`/`ctx[12]` path. Treat these fields
+as a current-sample/magic-shuttle path required by host callbacks until a
+hardware probe proves a narrower contract.
 
 The audio loop processes **8 samples per channel × 2 channels = 16
 floats per call**, channel-interleaved as `LLLLLLLL RRRRRRRR`.
@@ -543,6 +550,16 @@ LineSel teaches the cleanest mental model for the host's signal flow:
 5. Most factory effects compute `wet_out = process(Effect)`, write
    that back into `Effect` (so the next effect sees it), and don't
    touch `Output` (so trails decay cleanly when this effect is bypassed).
+
+The ZD2 `Fx_SFX_LineSel` body posted by mungewell/ELynx is not a drop-in match
+for the ZDL ABI: it uses `Fx_SFX_`, a different context field layout, and a
+looped body, while MS-70CDR ZDL LineSel exports `Fx_FLT_LineSel` and uses an
+8-sample unrolled `.audio` body. The signal-flow and coefficient roles line up,
+though: coefficient table values equivalent to `K0`, `K4`, `K5`, and `K6`
+drive the effect-output and pedal-output gains. That supports the current
+parameter-bug diagnosis: stock init/edit handlers materialize coefficient-table
+values before audio runs, while custom builds with cloned edit handlers may see
+zero/unmaterialized parameter slots until the user touches a knob.
 
 This means a port like Airwindows `Console` channel — which is itself
 a clean sum stage — maps directly onto reading `Effect`, summing, and
