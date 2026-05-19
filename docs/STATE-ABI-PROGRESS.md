@@ -156,6 +156,23 @@ custom `InitProbe` stage 3 failure should not be fixed by simply copying the
 `c00a5406` allocation layout; we still need to find the exact state image at
 the moment the embedded ZDL `_init` function is entered.
 
+Dispatch-side lead:
+
+Firmware has a tiny generic function-pointer wrapper at `c00d3bec`, and
+loader/runtime regions at `c00a4db0..c00a4e38` and `c00a6ab0..c00a6b64` call
+through it while walking fields that look like callback lists:
+
+| Field | Observed use in those regions |
+|---:|---|
+| `word20` | optional direct callback pointer |
+| `word21` | base/list pointer used during callback iteration |
+| `word22` | byte/count-like value that gates the `word21` iteration |
+
+This is not yet tied to embedded ZDL `_init`, but it is a stronger lead than
+the allocation-time sentinel layout because it shows actual late-bound
+function-pointer dispatch. Next static target: connect these lists to ZDL
+descriptor records or embedded symbol pointers.
+
 ## ToTape9 Split Status
 
 | Variant | Result | Meaning |

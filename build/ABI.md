@@ -468,6 +468,32 @@ enters the embedded ZDL init, while similarly numbered fields in nearby loader
 bookkeeping may still be indices/sentinels. Do not synthesize this state from
 the `c00a5406` allocation alone.
 
+Firmware dispatch lead: `c00d3bec` is a tiny generic function-pointer caller:
+
+```
+c00d3bec  save B3
+c00d3bf0  branch to A4
+c00d3bf4  set return PC
+c00d3bf8  restore B3
+```
+
+It is called from loader/runtime regions at `c00a4e14`, `c00a4e34`,
+`c00a6ad8`, and `c00a6b38`. The surrounding code is not yet proven to be ZDL
+`_init`, but it is important:
+
+* `c00a4db0..c00a4e38` checks `word22`, iterates over an array rooted at
+  `word21`, and calls each non-null entry through `c00d3bec`. It also calls
+  `word20` if present.
+* `c00a6ab0..c00a6b64` does a similar walk through a linked/list-like object:
+  call `object[0]` if `object[1]` is zero, otherwise iterate entries rooted at
+  `object[0]`, then call via `c00d3bec`.
+
+These regions are better candidates for the late-bound callback dispatch
+environment than the raw 164-byte loader allocation. The next static target is
+to connect these dispatch lists to the embedded ZDL symbols or descriptor
+records so we know whether they are init handlers, edit handlers, or host
+cleanup/materialization callbacks.
+
 For Exciter, init at `.text+0x5c0` (per `Fx_FLT_Exciter_init` symbol)
 should follow the same pattern — invoke onf, then each edit handler.
 
