@@ -348,6 +348,106 @@ kind of per-sample copy through the `ctx[11]`/`ctx[12]` path. Treat these fields
 as a current-sample/magic-shuttle path required by host callbacks until a
 hardware probe proves a narrower contract.
 
+#### ZD2 ↔ ZDL ctx-field mapping (LineSel cross-reference)
+
+A user contributed a hand-decoded ZD2 (Zoom G5-family format)
+`Fx_SFX_LineSel` audio body. ZD2 uses different ctx indices than ZDL, but
+the algorithm is the same — that lets us back-map ZD2's commented field
+names onto our ZDL ctx slots. The two bodies process the same K0/K4/K5/K6
+coefficient table out of `ctx[1]`, read input from one buffer, write to
+two buffers (effect bus + pedal bus), and both shuttle a "current sample"
+through `ctx[11]`/`ctx[12]` (ZDL) ≡ `ctx[7][0]` (ZD2).
+
+| Role                                  | ZDL ctx   | ZD2 ctx               |
+|---------------------------------------|-----------|-----------------------|
+| coefficient / params table base       | `ctx[1]`  | `*A4[1]` (via A4)     |
+| dry / input buffer                    | `ctx[4]`  | `ctx[8]`              |
+| effect output (wet bus)               | `ctx[5]`  | `ctx[1]`              |
+| pedal output (accumulator)            | `ctx[6]`  | `ctx[2]`              |
+| current-sample shuttle dst (indirect) | `*ctx[11]`| `ctx[7][0]`           |
+| current-sample shuttle src            | `ctx[12]` | input buffer reads    |
+
+ZD2 buffers are processed as 16 samples × 2 outer iterations with a
+64-byte stride between iterations (32 samples × 4-byte float total per
+channel pair). ZDL buffers are 8 samples × 2 outer iterations (the
+`LLLLLLLL RRRRRRRR` layout, 16 floats per call). Same algorithm,
+different block sizes — useful when porting effects between formats.
+
+#### LineSel coefficient model — what `ctx[1]` actually means
+
+The ZD2 trace plus the ZDL disassembly of `Fx_FLT_LineSel` together show
+that LineSel's audio body reads **four named coefficients K0, K4, K5, K6**
+from `ctx[1]` and computes:
+
+```
+sample × K0 × K4 × K5         → written to ctx[5] (effect bus)
+(1 - K0) × sample × K4 × K6   → added to ctx[6] (pedal bus accumulator)
+```
+
+So K0 acts as the wet/dry mix (effect-bus enable), and K6 is the pedal-bus
+output level. K5 is the effect-bus level. K4 is a fixed gain (in stock
+LineSel it stays at the default the host sets up).
+
+Mapping the K-positions onto the param/coefficient table indices that
+`ctx[1]` indexes:
+
+| coefficient | `ctx[1][N]` byte offset | corresponds to                |
+|-------------|------------------------:|-------------------------------|
+| K0          | `+0x00` (=`params[0]`)  | OnOff state (bypass fade)     |
+| K4          | `+0x10` (=`params[4]`)  | system gain (default-only)    |
+| K5          | `+0x14` (=`params[5]`)  | `EfxLvl_edit` writes here     |
+| K6          | `+0x18` (=`params[6]`)  | `OutLvl_edit` writes here     |
+
+That places the two LineSel user knobs at `params[5]` and `params[6]` —
+exactly what `build/linker.py` already produces. **The first user knob
+lands at `params[5]` because positions `params[0..4]` are taken by
+host-managed coefficients (K0, K4, plus three system slots) that the
+audio function may read.** Custom plugins should treat the
+`params[0..4]` range as reserved for system fields, not freely writable.
+
+`_Fx_FLT_LineSel_Coe` (the 28-byte table that `_init` registers via
+`state[34]`) is all zeros on disk; the host populates K0 and K4
+dynamically. This means **state[34]'s job is to *register* the
+coefficient region with the host, not to copy real data into it** — the
+real coefficient updates flow through the edit handlers and the state[7]
+tail-call.
+
+#### `state[7]`'s firmware target is not a simple param store
+
+The edit handler's final tail-call goes to `state[7]` (template value
+`0xc00cc94c`). Reading that firmware function shows it is **not** a
+"write the float to `params[A0+N]`" routine. Instead it:
+
+* loads `state[0]` (= 0 from template), computes `0 - B10` as a
+  single-precision float (B10 = the value the handler passed in);
+* converts to double, takes `ABSDP`, compares against `0` with
+  `CMPEQSP` — early-exits if the input was exactly zero;
+* otherwise multiplies the absolute value by a constant
+  `0x3eb00000_a0b50000` (a double-precision scaling factor near
+  `5.36e-7`) and compares with another constant for clamping;
+* finally calls into `c00cc8c8` (further normalization) and writes to a
+  global UI state region at `0x11f03b08`/`0x11f03b18` (past the
+  per-slot 212-byte block at `0x11f03000 + slot*0xD4`).
+
+Practical implications:
+
+* The state[7] tail-call is **not safe to skip** in a borrowed handler
+  — it does denormal/zero sanitization and UI synchronization, not just
+  storage.
+* The "params slot offset" the edit handler computes (`MV A0, A4;
+  MVK 20, A4; ADD A0, A4, A4`) probably tells state[7] *which* param
+  to update; the actual write happens inside the firmware after
+  normalization.
+* Writing to `params[N]` from a custom audio function (bypassing
+  state[7]) is one-way — it lands as a raw float without UI sync.
+
+This is why the SyncProbe patched-handler experiment produced silent
+audio: even when `state[24]` returned a non-zero value, the SHL-22
+shift plus the state[7] normalize-and-clamp logic mapped most return
+values to zero or a constant near zero. A correct sync probe needs to
+bypass state[7] entirely, or supply state[7] with a value already in
+the post-SHL range it expects (`< ~0.14` raw).
+
 The audio loop processes **8 samples per channel × 2 channels = 16
 floats per call**, channel-interleaved as `LLLLLLLL RRRRRRRR`.
 Implementations use a 2-iteration outer loop over channels (`MVK 2,B0`)
