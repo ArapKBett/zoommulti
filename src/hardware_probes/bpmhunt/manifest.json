@@ -1,0 +1,30 @@
+{
+  "effect_name": "BpmHunt",
+  "comment": "Use the audio function as a memory inspector. The Addr knob (0..15) selects a 4-byte offset; the audio function reads *(0xc009c1a0 + 4*N) directly and turns the low 8 bits of the read value into a 0..2 gain. As the user turns the knob, different firmware-RAM globals are sampled. The settings where gain changes when tap tempo is pressed point at BPM-related storage.\n\nstate[31]'s table base 0xc009c1a0 is the per-slot scratch we already mapped (B4=2 returns knob 1 value, etc.). Reading PAST the per-slot rows reaches adjacent firmware globals. With knob = 0..15 we sweep 0xc009c1a0..0xc009c1dc — the same range that nearby firmware code references (c00a224c references 0xc009c1d4 etc).\n\nTest plan:\n  1. Load probe, unbypass — expect SOMETHING audible (default knob = 0 reads the state[31] table base pointer; should give a non-zero gain).\n  2. Sweep the knob through 0..15, listening at each setting. Some settings will read pointers (huge values, gain saturates), some will be near-zero, some may be small ints.\n  3. At each setting, tap the tempo button at a steady BPM, then a different BPM. If the audio gain CHANGES with tap tempo at a particular knob setting, that knob value points at BPM-related memory.\n  4. The interesting knob N -> address 0xc009c1a0 + 4*N. Record it.",
+
+  "audio_func_name": "Fx_FLT_BpmHunt",
+
+  "gid": 2,
+  "gid_comment": "0x02 = Filter category.",
+
+  "fxid": 415,
+  "fxid_comment": "0x019F. Next after the SyncProbe family.",
+
+  "fxid_version": "1.00",
+  "flags_byte": 1,
+
+  "params": [
+    {
+      "name": "Addr",
+      "type": "knob",
+      "max": 100,
+      "default": 0,
+      "audio_min": 0.0,
+      "audio_max": 1.0,
+      "audio_default": 0.0,
+      "comment": "Knob 0..100 -> address index 0..15 (clamped). Maps via low-bit truncation."
+    }
+  ],
+
+  "audio_nop": false
+}
