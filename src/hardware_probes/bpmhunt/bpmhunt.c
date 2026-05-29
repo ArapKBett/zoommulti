@@ -43,10 +43,13 @@ void Fx_FLT_BpmHunt(unsigned int *ctx)
     unsigned int *magicDst = ZDL_PTR(unsigned int *, *(unsigned int *)ZDL_PTR(unsigned int *, ctx[11]));
     *magicDst = *magicSrc;
 
-    /* LineSel handler stores raw knob in 0..0.14 float. Map to 0..15 index. */
+    /* LineSel handler stores raw knob in roughly 0..0.14 float for a max=15
+     * slot (each unit of knob travel ≈ 0.009 in raw). Map to a 0..15 idx,
+     * clamping defensively in case the host adjusts the curve with the
+     * pedal_flags=0x28 sync-style slot. */
     float raw = params[BPMHUNT_ADDR_SLOT];
-    if (raw < 0.0f) raw = 0.0f;
-    if (raw > 0.14f) raw = 0.14f;
+    if (raw < 0.0f) raw = -raw;
+    if (raw > 1.0f) raw = 1.0f;
     int idx = (int)(raw * (15.0f / 0.14f));
     if (idx < 0) idx = 0;
     if (idx > 15) idx = 15;

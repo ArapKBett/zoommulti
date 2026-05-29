@@ -13,6 +13,14 @@ risk from the state[7] postbox issue that bit SyncProbe v2 — the
 LineSel knob handler does its normal job (read knob, normalize,
 post to UI), and the audio function does the inspection.
 
+The `Addr` slot's descriptor carries `pedal_flags = 0x28` (the
+Pattern B tempo-sync bit, same flag SyncProbe v1 used). That triggers
+the pedal's **TAP UI**: clicking the left knob exposes the
+tap-tempo button. Without that flag the TAP button is hidden and
+there's no way to drive BPM changes for the probe to find. SyncProbe
+v1 already confirmed loading and knob interaction are safe with this
+flag on a custom ZDL.
+
 ## Why this address range
 
 `0xc009c1a0` is the base of `state[31]`'s per-slot lookup table

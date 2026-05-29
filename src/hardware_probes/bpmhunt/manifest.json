@@ -17,12 +17,14 @@
     {
       "name": "Addr",
       "type": "knob",
-      "max": 100,
+      "max": 15,
       "default": 0,
+      "flags": 40,
+      "flags_comment": "0x28 — the Pattern B tempo-sync bit. SyncProbe v1 confirmed this slot is the trigger for the pedal's TAP UI: with this flag, clicking the left knob exposes the tap-tempo button, which is the whole mechanism we need to drive BPM changes for this probe.",
       "audio_min": 0.0,
       "audio_max": 1.0,
       "audio_default": 0.0,
-      "comment": "Knob 0..100 -> address index 0..15 (clamped). Maps via low-bit truncation."
+      "comment": "Knob 0..15 selects which 4-byte word in the firmware-RAM scan window the audio function reads. The TAP UI lets the user tap a tempo while the chosen address is sampled."
     }
   ],
 
