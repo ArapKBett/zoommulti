@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<compiler_spec>
+  <data_organization>
+    <machine_alignment value="2"/>
+    <default_alignment value="1"/>
+    <default_pointer_alignment value="2"/>
+    <pointer_size value="2"/>
+    <wchar_size value="2"/>
+    <short_size value="2"/>
+    <integer_size value="2"/>
+    <long_size value="4"/>
+    <long_long_size value="4"/>
+    <float_size value="4"/>
+    <double_size value="4"/>
+    <long_double_size value="4"/>
+    <size_alignment_map>
+      <entry size="1" alignment="1"/>
+      <entry size="2" alignment="2"/>
+      <entry size="4" alignment="2"/>
+      <entry size="8" alignment="2"/>
+    </size_alignment_map>
+  </data_organization>
+
+  <global>
+    <range space="DATA"/>
+    <range space="IO"/>
+  </global>
+
+  <stackpointer register="SP" space="DATA" growth="negative"/>
+
+  <!-- TMS320C24x calling convention -->
+  <default_proto>
+    <prototype name="__stdcall" extrapop="0" stackshift="0">
+      <input>
+        <pentry minsize="1" maxsize="2">
+          <register name="ACC"/>
+        </pentry>
+        <pentry minsize="1" maxsize="2">
+          <register name="ACCB"/>
+        </pentry>
+        <pentry minsize="1" maxsize="500" align="2">
+          <addr offset="0" space="stack"/>
+        </pentry>
+      </input>
+      <output>
+        <pentry minsize="1" maxsize="2">
+          <register name="ACC"/>
+        </pentry>
+        <pentry minsize="4" maxsize="4">
+          <addr offset="0" space="stack"/>
+        </pentry>
+      </output>
+      <unaffected>
+        <register name="SP"/>
+        <register name="AR0"/>
+        <register name="AR1"/>
+        <register name="AR2"/>
+        <register name="AR3"/>
+        <register name="AR4"/>
+        <register name="AR5"/>
+        <register name="AR6"/>
+        <register name="AR7"/>
+        <register name="DP"/>
+      </unaffected>
+      <killedbycall>
+        <register name="ACC"/>
+        <register name="ACCB"/>
+        <register name="PREG"/>
+        <register name="TREG0"/>
+        <register name="TREG1"/>
+        <register name="TREG2"/>
+      </killedbycall>
+      <likelytrash>
+        <register name="ACC"/>
+        <register name="PREG"/>
+        <register name="TREG0"/>
+      </likelytrash>
+    </prototype>
+  </default_proto>
+
+  <!-- Interrupt service routine prototype -->
+  <prototype name="__interrupt" extrapop="0" stackshift="0">
+    <input/>
+    <output/>
+    <unaffected>
+      <register name="SP"/>
+    </unaffected>
+    <killedbycall/>
+    <likelytrash/>
+  </prototype>
+
+  <!-- Function pointer prototype -->
+  <prototype name="__funcptr" extrapop="0" stackshift="0">
+    <input>
+      <pentry minsize="1" maxsize="2">
+        <register name="ACC"/>
+      </pentry>
+      <pentry minsize="1" maxsize="500" align="2">
+        <addr offset="0" space="stack"/>
+      </pentry>
+    </input>
+    <output>
+      <pentry minsize="1" maxsize="2">
+        <register name="ACC"/>
+      </pentry>
+    </output>
+    <unaffected>
+      <register name="SP"/>
+      <register name="DP"/>
+    </unaffected>
+    <killedbycall>
+      <register name="ACC"/>
+      <register name="PREG"/>
+      <register name="TREG0"/>
+      <register name="TREG1"/>
+      <register name="TREG2"/>
+    </killedbycall>
+  </prototype>
+
+  <!-- Segment definitions for TMS320C24x memory map -->
+  <segmentop space="PROG" userop="segmented_address">
+    <pcode>
+      <input name="base" size="2"/>
+      <input name="offset" size="2"/>
+      <output name="address" size="2"/>
+      <body>
+        <![CDATA[
+        address = (base << 16) | offset;
+        ]]>
+      </body>
+    </pcode>
+  </segmentop>
+
+  <!-- Memory banking operations -->
+  <context_data>
+    <tracked_set space="DATA">
+      <set name="DP" val="0x0000"/>
+    </tracked_set>
+  </context_data>
+
+  <!-- Data page addressing -->
+  <segmentop space="DATA" userop="data_page_address">
+    <pcode>
+      <input name="page" size="2"/>
+      <input name="offset" size="1"/>
+      <output name="address" size="2"/>
+      <body>
+        <![CDATA[
+        address = (page << 7) | offset;
+        ]]>
+      </body>
+    </pcode>
+  </segmentop>
+
+  <!-- Return address handling for calls -->
+  <returnaddress>
+    <varnode space="stack" offset="0" size="2"/>
+  </returnaddress>
+
+  <!-- Processor-specific addressing modes -->
+  <incidentalcopy>
+    <register name="C"/>
+    <register name="Z"/>
+    <register name="V"/>
+    <register name="N"/>
+    <register name="TC"/>
+  </incidentalcopy>
+
+  <!-- Dead code elimination rules -->
+  <deadcodedelay>
+    <register name="ACC"/>
+    <register name="ACCB"/>
+    <register name="PREG"/>
+  </deadcodedelay>
+
+  <!-- Volatile registers that should not be assumed to persist -->
+  <spacebase name="DATA" register="DP" size="2"/>
+  <spacebase name="stack" register="SP" size="2"/>
+
+  <!-- Memory mapped registers -->
+  <global>
+    <range space="IO"/>
+  </global>
+
+</compiler_spec>

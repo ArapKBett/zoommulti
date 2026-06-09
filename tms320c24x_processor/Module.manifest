@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<module>
+    <name>TMS320C24x Processor Module</name>
+    <description>Ghidra processor module for TI TMS320C24x 16-bit fixed-point DSP family</description>
+    <version>1.0.0</version>
+    <author>Claude Code</author>
+    <supported_processor>TMS320C24x</supported_processor>
+
+    <entry>
+        <file>data/languages/TMS320C24x.sla</file>
+        <file>data/languages/TMS320C24x.pspec</file>
+        <file>data/languages/TMS320C24x.cspec</file>
+        <file>data/languages/TMS320C24x.ldefs</file>
+        <file>data/languages/TMS320C24x.opinion</file>
+    </entry>
+</module>

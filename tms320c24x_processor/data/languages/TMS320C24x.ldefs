@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- TMS320C24x Language Module Definition -->
+
+<language_definitions>
+
+  <language processor="TMS320C24x"
+            endian="little"
+            size="16"
+            variant="default"
+            version="1.0"
+            slafile="TMS320C24x.sla"
+            processorspec="TMS320C24x.pspec"
+            id="TMS320C24x:LE:16:default">
+    <description>TMS320C24x 16-bit Fixed-Point DSP Family</description>
+    <compiler name="default" spec="TMS320C24x.cspec" id="default"/>
+    <compiler name="ti-c2000" spec="TMS320C24x.cspec" id="ti"/>
+    <external_name tool="gnu" name="tms320c24x"/>
+    <external_name tool="ida" name="tms320c2x"/>
+  </language>
+
+  <!-- C240 variant -->
+  <language processor="TMS320C240"
+            endian="little"
+            size="16"
+            variant="C240"
+            version="1.0"
+            slafile="TMS320C24x.sla"
+            processorspec="TMS320C24x.pspec"
+            id="TMS320C240:LE:16:default">
+    <description>TMS320C240 16-bit Fixed-Point DSP with Motor Control</description>
+    <compiler name="default" spec="TMS320C24x.cspec" id="default"/>
+    <compiler name="ti-c2000" spec="TMS320C24x.cspec" id="ti"/>
+    <external_name tool="gnu" name="tms320c240"/>
+    <external_name tool="ida" name="tms320c2x"/>
+  </language>
+
+  <!-- C241 variant -->
+  <language processor="TMS320C241"
+            endian="little"
+            size="16"
+            variant="C241"
+            version="1.0"
+            slafile="TMS320C24x.sla"
+            processorspec="TMS320C24x.pspec"
+            id="TMS320C241:LE:16:default">
+    <description>TMS320C241 16-bit Fixed-Point DSP with Motor Control</description>
+    <compiler name="default" spec="TMS320C24x.cspec" id="default"/>
+    <compiler name="ti-c2000" spec="TMS320C24x.cspec" id="ti"/>
+    <external_name tool="gnu" name="tms320c241"/>
+    <external_name tool="ida" name="tms320c2x"/>
+  </language>
+
+  <!-- C242 variant -->
+  <language processor="TMS320C242"
+            endian="little"
+            size="16"
+            variant="C242"
+            version="1.0"
+            slafile="TMS320C24x.sla"
+            processorspec="TMS320C24x.pspec"
+            id="TMS320C242:LE:16:default">
+    <description>TMS320C242 16-bit Fixed-Point DSP with Enhanced Peripherals</description>
+    <compiler name="default" spec="TMS320C24x.cspec" id="default"/>
+    <compiler name="ti-c2000" spec="TMS320C24x.cspec" id="ti"/>
+    <external_name tool="gnu" name="tms320c242"/>
+    <external_name tool="ida" name="tms320c2x"/>
+  </language>
+
+  <!-- C243 variant -->
+  <language processor="TMS320C243"
+            endian="little"
+            size="16"
+            variant="C243"
+            version="1.0"
+            slafile="TMS320C24x.sla"
+            processorspec="TMS320C24x.pspec"
+            id="TMS320C243:LE:16:default">
+    <description>TMS320C243 16-bit Fixed-Point DSP with Enhanced Peripherals</description>
+    <compiler name="default" spec="TMS320C24x.cspec" id="default"/>
+    <compiler name="ti-c2000" spec="TMS320C24x.cspec" id="ti"/>
+    <external_name tool="gnu" name="tms320c243"/>
+    <external_name tool="ida" name="tms320c2x"/>
+  </language>
+
+  <!-- C244 variant -->
+  <language processor="TMS320C244"
+            endian="little"
+            size="16"
+            variant="C244"
+            version="1.0"
+            slafile="TMS320C24x.sla"
+            processorspec="TMS320C24x.pspec"
+            id="TMS320C244:LE:16:default">
+    <description>TMS320C244 16-bit Fixed-Point DSP with Enhanced Motor Control</description>
+    <compiler name="default" spec="TMS320C24x.cspec" id="default"/>
+    <compiler name="ti-c2000" spec="TMS320C24x.cspec" id="ti"/>
+    <external_name tool="gnu" name="tms320c244"/>
+    <external_name tool="ida" name="tms320c2x"/>
+  </language>
+
+</language_definitions>

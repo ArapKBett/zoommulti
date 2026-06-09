@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- TMS320C24x Loader Opinion File -->
+<!-- Helps Ghidra identify and select the appropriate processor for TMS320C24x binaries -->
+
+<opinions>
+
+  <!-- TI COFF object files for TMS320C24x -->
+  <constraint loader="Common Object File Format (COFF)" compilerSpecID="default">
+    <constraint field="Machine Type" value="0x93"/> <!-- TI C2000 machine type -->
+    <constraint field="Optional Header Magic" value="0x108"/>
+  </constraint>
+
+  <!-- Raw binary files that might be TMS320C24x firmware -->
+  <constraint loader="Raw Binary" compilerSpecID="default">
+    <constraint field="File Size" min="0x100" max="0x10000"/>
+    <!-- Suggest TMS320C24x for reasonably sized binary files -->
+  </constraint>
+
+  <!-- Intel HEX files -->
+  <constraint loader="Intel Hex" compilerSpecID="default">
+    <constraint field="File Extension" value=".hex"/>
+  </constraint>
+
+  <!-- Motorola S-Record files -->
+  <constraint loader="Motorola S-Record" compilerSpecID="default">
+    <constraint field="File Extension" value=".s19"/>
+    <constraint field="File Extension" value=".s28"/>
+    <constraint field="File Extension" value=".s37"/>
+    <constraint field="File Extension" value=".srec"/>
+  </constraint>
+
+  <!-- TI-TXT format files -->
+  <constraint loader="Raw Binary" compilerSpecID="default">
+    <constraint field="File Extension" value=".txt"/>
+    <constraint field="File Extension" value=".ti-txt"/>
+  </constraint>
+
+  <!-- Common file extensions for TMS320C24x -->
+  <constraint loader="Raw Binary" compilerSpecID="default">
+    <constraint field="File Extension" value=".c24"/>
+    <constraint field="File Extension" value=".c240"/>
+    <constraint field="File Extension" value=".c241"/>
+    <constraint field="File Extension" value=".c242"/>
+    <constraint field="File Extension" value=".c243"/>
+    <constraint field="File Extension" value=".c244"/>
+  </constraint>
+
+  <!-- ELF files with TI C2000 machine type -->
+  <constraint loader="Executable and Linking Format (ELF)" compilerSpecID="default">
+    <constraint field="e_machine" value="0x8C"/> <!-- TI C6000 -->
+    <constraint field="e_machine" value="0x93"/> <!-- TI C2000 -->
+  </constraint>
+
+  <!-- Boot ROM and firmware images -->
+  <constraint loader="Raw Binary" compilerSpecID="default">
+    <constraint field="File Name Pattern" value=".*boot.*\.bin"/>
+    <constraint field="File Name Pattern" value=".*firmware.*\.bin"/>
+    <constraint field="File Name Pattern" value=".*rom.*\.bin"/>
+  </constraint>
+
+  <!-- Files with known TMS320C24x patterns in header -->
+  <constraint loader="Raw Binary" compilerSpecID="default">
+    <constraint field="Byte Pattern" offset="0x0" value="7F 95"/> <!-- Common RET instruction at reset -->
+    <constraint field="Byte Pattern" offset="0x0" value="F9 00"/> <!-- Common B instruction at reset -->
+  </constraint>
+
+  <!-- TI Code Composer Studio project files -->
+  <constraint loader="Raw Binary" compilerSpecID="default">
+    <constraint field="File Extension" value=".out"/>
+    <constraint field="File Extension" value=".cof"/>
+  </constraint>
+
+</opinions>

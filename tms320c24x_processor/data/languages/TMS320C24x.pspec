@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<processor_spec>
+  <programcounter register="PC"/>
+
+  <context_data>
+    <context_set space="DATA">
+      <set name="DP" val="0x0000"/>
+    </context_set>
+  </context_data>
+
+  <volatile outputop="write_volatile" inputop="read_volatile">
+    <range space="IO" first="0x0000" last="0xFFFF"/>
+  </volatile>
+
+  <default_symbols>
+    <symbol name="RESET" address="PROG:0x0000" type="code_ptr"/>
+    <symbol name="INT1" address="PROG:0x0002" type="code_ptr"/>
+    <symbol name="INT2" address="PROG:0x0004" type="code_ptr"/>
+    <symbol name="INT3" address="PROG:0x0006" type="code_ptr"/>
+    <symbol name="INT4" address="PROG:0x0008" type="code_ptr"/>
+    <symbol name="INT5" address="PROG:0x000A" type="code_ptr"/>
+    <symbol name="INT6" address="PROG:0x000C" type="code_ptr"/>
+    <symbol name="TINT" address="PROG:0x000E" type="code_ptr"/>
+    <symbol name="RINT" address="PROG:0x0010" type="code_ptr"/>
+    <symbol name="XINT" address="PROG:0x0012" type="code_ptr"/>
+    <symbol name="TRAP" address="PROG:0x0014" type="code_ptr"/>
+    <symbol name="NMI" address="PROG:0x0016" type="code_ptr"/>
+    <symbol name="EMU_TRAP" address="PROG:0x0018" type="code_ptr"/>
+    <symbol name="USER1" address="PROG:0x001A" type="code_ptr"/>
+    <symbol name="USER2" address="PROG:0x001C" type="code_ptr"/>
+    <symbol name="USER3" address="PROG:0x001E" type="code_ptr"/>
+
+    <!-- Common peripheral registers -->
+    <symbol name="PIE_CTRL" address="IO:0x0CE0" type="data_ptr"/>
+    <symbol name="PIE_ACK" address="IO:0x0CE1" type="data_ptr"/>
+    <symbol name="PIE_IER1" address="IO:0x0CE2" type="data_ptr"/>
+    <symbol name="PIE_IFR1" address="IO:0x0CE3" type="data_ptr"/>
+    <symbol name="PIE_IER2" address="IO:0x0CE4" type="data_ptr"/>
+    <symbol name="PIE_IFR2" address="IO:0x0CE5" type="data_ptr"/>
+    <symbol name="PIE_IER3" address="IO:0x0CE6" type="data_ptr"/>
+    <symbol name="PIE_IFR3" address="IO:0x0CE7" type="data_ptr"/>
+    <symbol name="PIE_IER4" address="IO:0x0CE8" type="data_ptr"/>
+    <symbol name="PIE_IFR4" address="IO:0x0CE9" type="data_ptr"/>
+    <symbol name="PIE_IER5" address="IO:0x0CEA" type="data_ptr"/>
+    <symbol name="PIE_IFR5" address="IO:0x0CEB" type="data_ptr"/>
+    <symbol name="PIE_IER6" address="IO:0x0CEC" type="data_ptr"/>
+    <symbol name="PIE_IFR6" address="IO:0x0CED" type="data_ptr"/>
+
+    <!-- Timer registers -->
+    <symbol name="T1CON" address="IO:0x7001" type="data_ptr"/>
+    <symbol name="T1CNT" address="IO:0x7002" type="data_ptr"/>
+    <symbol name="T1CMPR" address="IO:0x7003" type="data_ptr"/>
+    <symbol name="T1PR" address="IO:0x7004" type="data_ptr"/>
+    <symbol name="T2CON" address="IO:0x7005" type="data_ptr"/>
+    <symbol name="T2CNT" address="IO:0x7006" type="data_ptr"/>
+    <symbol name="T2CMPR" address="IO:0x7007" type="data_ptr"/>
+    <symbol name="T2PR" address="IO:0x7008" type="data_ptr"/>
+
+    <!-- SCI registers -->
+    <symbol name="SCICCR" address="IO:0x7040" type="data_ptr"/>
+    <symbol name="SCICTL1" address="IO:0x7041" type="data_ptr"/>
+    <symbol name="SCIHBAUD" address="IO:0x7042" type="data_ptr"/>
+    <symbol name="SCILBAUD" address="IO:0x7043" type="data_ptr"/>
+    <symbol name="SCICTL2" address="IO:0x7044" type="data_ptr"/>
+    <symbol name="SCIRXST" address="IO:0x7045" type="data_ptr"/>
+    <symbol name="SCIRXEMU" address="IO:0x7046" type="data_ptr"/>
+    <symbol name="SCIRXBUF" address="IO:0x7047" type="data_ptr"/>
+    <symbol name="SCITXBUF" address="IO:0x7049" type="data_ptr"/>
+
+    <!-- SPI registers -->
+    <symbol name="SPICCR" address="IO:0x7060" type="data_ptr"/>
+    <symbol name="SPICTL" address="IO:0x7061" type="data_ptr"/>
+    <symbol name="SPISTS" address="IO:0x7062" type="data_ptr"/>
+    <symbol name="SPIBRR" address="IO:0x7064" type="data_ptr"/>
+    <symbol name="SPIEMU" address="IO:0x7065" type="data_ptr"/>
+    <symbol name="SPIRXBUF" address="IO:0x7066" type="data_ptr"/>
+    <symbol name="SPITXBUF" address="IO:0x7067" type="data_ptr"/>
+    <symbol name="SPIDAT" address="IO:0x7068" type="data_ptr"/>
+
+    <!-- ADC registers -->
+    <symbol name="ADCTRL1" address="IO:0x7100" type="data_ptr"/>
+    <symbol name="ADCTRL2" address="IO:0x7101" type="data_ptr"/>
+    <symbol name="ADCTRL3" address="IO:0x7102" type="data_ptr"/>
+    <symbol name="ADCST" address="IO:0x7103" type="data_ptr"/>
+    <symbol name="ADCFIFO1" address="IO:0x7108" type="data_ptr"/>
+    <symbol name="ADCFIFO2" address="IO:0x7109" type="data_ptr"/>
+    <symbol name="ADCFIFO3" address="IO:0x710A" type="data_ptr"/>
+    <symbol name="ADCFIFO4" address="IO:0x710B" type="data_ptr"/>
+
+    <!-- PWM registers -->
+    <symbol name="GPTCONA" address="IO:0x7120" type="data_ptr"/>
+    <symbol name="T3CON" address="IO:0x7121" type="data_ptr"/>
+    <symbol name="T3CNT" address="IO:0x7122" type="data_ptr"/>
+    <symbol name="T3CMPR" address="IO:0x7123" type="data_ptr"/>
+    <symbol name="T3PR" address="IO:0x7124" type="data_ptr"/>
+    <symbol name="T4CON" address="IO:0x7125" type="data_ptr"/>
+    <symbol name="T4CNT" address="IO:0x7126" type="data_ptr"/>
+    <symbol name="T4CMPR" address="IO:0x7127" type="data_ptr"/>
+    <symbol name="T4PR" address="IO:0x7128" type="data_ptr"/>
+  </default_symbols>
+
+  <default_memory_blocks>
+    <memory_block name="DATA_PAGE_0" start_address="DATA:0x0000" length="0x80" initialized="false"/>
+    <memory_block name="DATA_RAM" start_address="DATA:0x0200" length="0x300" initialized="false"/>
+    <memory_block name="PROG_RAM" start_address="PROG:0x0000" length="0x8000" initialized="false"/>
+    <memory_block name="IO_SPACE" start_address="IO:0x0000" length="0x10000" initialized="false"/>
+  </default_memory_blocks>
+
+</processor_spec>

@@ -1,0 +1,41 @@
+# TMS320C24x Processor Specification for Ghidra
+
+define endian=little;
+define alignment=2;
+
+define space ram type=ram_space size=2 default;
+define space register type=register_space size=2;
+
+define register offset=0 size=2 [ ACC PREG TREG0 DP SP PC ];
+define register offset=0x100 size=1 [ C Z V N ];
+
+define token instr(16)
+    op   = (8,15)
+    addr = (0,7)
+    imm  = (0,7)
+;
+
+# Instructions
+
+:NOP is op=0x7F & addr=0x00 {
+}
+
+:LACK imm is op=0x38 & imm {
+    ACC = imm;
+}
+
+:LAC addr is op=0x28 & addr {
+    ACC = *:2 addr:2;
+}
+
+:SACL addr is op=0x5A & addr {
+    *:2 addr:2 = ACC;
+}
+
+:ADD addr is op=0x00 & addr {
+    ACC = ACC + *:2 addr:2;
+}
+
+:SUB addr is op=0x09 & addr {
+    ACC = ACC - *:2 addr:2;
+}
