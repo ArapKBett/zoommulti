@@ -32,72 +32,72 @@
     <symbol name="USER3" address="PROG:0x001E" type="code_ptr"/>
 
     <!-- Common peripheral registers -->
-    <symbol name="PIE_CTRL" address="IO:0x0CE0" type="data"/>
-    <symbol name="PIE_ACK" address="IO:0x0CE1" type="data"/>
-    <symbol name="PIE_IER1" address="IO:0x0CE2" type="data"/>
-    <symbol name="PIE_IFR1" address="IO:0x0CE3" type="data"/>
-    <symbol name="PIE_IER2" address="IO:0x0CE4" type="data"/>
-    <symbol name="PIE_IFR2" address="IO:0x0CE5" type="data"/>
-    <symbol name="PIE_IER3" address="IO:0x0CE6" type="data"/>
-    <symbol name="PIE_IFR3" address="IO:0x0CE7" type="data"/>
-    <symbol name="PIE_IER4" address="IO:0x0CE8" type="data"/>
-    <symbol name="PIE_IFR4" address="IO:0x0CE9" type="data"/>
-    <symbol name="PIE_IER5" address="IO:0x0CEA" type="data"/>
-    <symbol name="PIE_IFR5" address="IO:0x0CEB" type="data"/>
-    <symbol name="PIE_IER6" address="IO:0x0CEC" type="data"/>
-    <symbol name="PIE_IFR6" address="IO:0x0CED" type="data"/>
+    <symbol name="PIE_CTRL" address="IO:0x0CE0" type="code"/>
+    <symbol name="PIE_ACK" address="IO:0x0CE1" type="code"/>
+    <symbol name="PIE_IER1" address="IO:0x0CE2" type="code"/>
+    <symbol name="PIE_IFR1" address="IO:0x0CE3" type="code"/>
+    <symbol name="PIE_IER2" address="IO:0x0CE4" type="code"/>
+    <symbol name="PIE_IFR2" address="IO:0x0CE5" type="code"/>
+    <symbol name="PIE_IER3" address="IO:0x0CE6" type="code"/>
+    <symbol name="PIE_IFR3" address="IO:0x0CE7" type="code"/>
+    <symbol name="PIE_IER4" address="IO:0x0CE8" type="code"/>
+    <symbol name="PIE_IFR4" address="IO:0x0CE9" type="code"/>
+    <symbol name="PIE_IER5" address="IO:0x0CEA" type="code"/>
+    <symbol name="PIE_IFR5" address="IO:0x0CEB" type="code"/>
+    <symbol name="PIE_IER6" address="IO:0x0CEC" type="code"/>
+    <symbol name="PIE_IFR6" address="IO:0x0CED" type="code"/>
 
     <!-- Timer registers -->
-    <symbol name="T1CON" address="IO:0x7001" type="data"/>
-    <symbol name="T1CNT" address="IO:0x7002" type="data"/>
-    <symbol name="T1CMPR" address="IO:0x7003" type="data"/>
-    <symbol name="T1PR" address="IO:0x7004" type="data"/>
-    <symbol name="T2CON" address="IO:0x7005" type="data"/>
-    <symbol name="T2CNT" address="IO:0x7006" type="data"/>
-    <symbol name="T2CMPR" address="IO:0x7007" type="data"/>
-    <symbol name="T2PR" address="IO:0x7008" type="data"/>
+    <symbol name="T1CON" address="IO:0x7001" type="code"/>
+    <symbol name="T1CNT" address="IO:0x7002" type="code"/>
+    <symbol name="T1CMPR" address="IO:0x7003" type="code"/>
+    <symbol name="T1PR" address="IO:0x7004" type="code"/>
+    <symbol name="T2CON" address="IO:0x7005" type="code"/>
+    <symbol name="T2CNT" address="IO:0x7006" type="code"/>
+    <symbol name="T2CMPR" address="IO:0x7007" type="code"/>
+    <symbol name="T2PR" address="IO:0x7008" type="code"/>
 
     <!-- SCI registers -->
-    <symbol name="SCICCR" address="IO:0x7040" type="data"/>
-    <symbol name="SCICTL1" address="IO:0x7041" type="data"/>
-    <symbol name="SCIHBAUD" address="IO:0x7042" type="data"/>
-    <symbol name="SCILBAUD" address="IO:0x7043" type="data"/>
-    <symbol name="SCICTL2" address="IO:0x7044" type="data"/>
-    <symbol name="SCIRXST" address="IO:0x7045" type="data"/>
-    <symbol name="SCIRXEMU" address="IO:0x7046" type="data"/>
-    <symbol name="SCIRXBUF" address="IO:0x7047" type="data"/>
-    <symbol name="SCITXBUF" address="IO:0x7049" type="data"/>
+    <symbol name="SCICCR" address="IO:0x7040" type="code"/>
+    <symbol name="SCICTL1" address="IO:0x7041" type="code"/>
+    <symbol name="SCIHBAUD" address="IO:0x7042" type="code"/>
+    <symbol name="SCILBAUD" address="IO:0x7043" type="code"/>
+    <symbol name="SCICTL2" address="IO:0x7044" type="code"/>
+    <symbol name="SCIRXST" address="IO:0x7045" type="code"/>
+    <symbol name="SCIRXEMU" address="IO:0x7046" type="code"/>
+    <symbol name="SCIRXBUF" address="IO:0x7047" type="code"/>
+    <symbol name="SCITXBUF" address="IO:0x7049" type="code"/>
 
     <!-- SPI registers -->
-    <symbol name="SPICCR" address="IO:0x7060" type="data"/>
-    <symbol name="SPICTL" address="IO:0x7061" type="data"/>
-    <symbol name="SPISTS" address="IO:0x7062" type="data"/>
-    <symbol name="SPIBRR" address="IO:0x7064" type="data"/>
-    <symbol name="SPIEMU" address="IO:0x7065" type="data"/>
-    <symbol name="SPIRXBUF" address="IO:0x7066" type="data"/>
-    <symbol name="SPITXBUF" address="IO:0x7067" type="data"/>
-    <symbol name="SPIDAT" address="IO:0x7068" type="data"/>
+    <symbol name="SPICCR" address="IO:0x7060" type="code"/>
+    <symbol name="SPICTL" address="IO:0x7061" type="code"/>
+    <symbol name="SPISTS" address="IO:0x7062" type="code"/>
+    <symbol name="SPIBRR" address="IO:0x7064" type="code"/>
+    <symbol name="SPIEMU" address="IO:0x7065" type="code"/>
+    <symbol name="SPIRXBUF" address="IO:0x7066" type="code"/>
+    <symbol name="SPITXBUF" address="IO:0x7067" type="code"/>
+    <symbol name="SPIDAT" address="IO:0x7068" type="code"/>
 
     <!-- ADC registers -->
-    <symbol name="ADCTRL1" address="IO:0x7100" type="data"/>
-    <symbol name="ADCTRL2" address="IO:0x7101" type="data"/>
-    <symbol name="ADCTRL3" address="IO:0x7102" type="data"/>
-    <symbol name="ADCST" address="IO:0x7103" type="data"/>
-    <symbol name="ADCFIFO1" address="IO:0x7108" type="data"/>
-    <symbol name="ADCFIFO2" address="IO:0x7109" type="data"/>
-    <symbol name="ADCFIFO3" address="IO:0x710A" type="data"/>
-    <symbol name="ADCFIFO4" address="IO:0x710B" type="data"/>
+    <symbol name="ADCTRL1" address="IO:0x7100" type="code"/>
+    <symbol name="ADCTRL2" address="IO:0x7101" type="code"/>
+    <symbol name="ADCTRL3" address="IO:0x7102" type="code"/>
+    <symbol name="ADCST" address="IO:0x7103" type="code"/>
+    <symbol name="ADCFIFO1" address="IO:0x7108" type="code"/>
+    <symbol name="ADCFIFO2" address="IO:0x7109" type="code"/>
+    <symbol name="ADCFIFO3" address="IO:0x710A" type="code"/>
+    <symbol name="ADCFIFO4" address="IO:0x710B" type="code"/>
 
     <!-- PWM registers -->
-    <symbol name="GPTCONA" address="IO:0x7120" type="data"/>
-    <symbol name="T3CON" address="IO:0x7121" type="data"/>
-    <symbol name="T3CNT" address="IO:0x7122" type="data"/>
-    <symbol name="T3CMPR" address="IO:0x7123" type="data"/>
-    <symbol name="T3PR" address="IO:0x7124" type="data"/>
-    <symbol name="T4CON" address="IO:0x7125" type="data"/>
-    <symbol name="T4CNT" address="IO:0x7126" type="data"/>
-    <symbol name="T4CMPR" address="IO:0x7127" type="data"/>
-    <symbol name="T4PR" address="IO:0x7128" type="data"/>
+    <symbol name="GPTCONA" address="IO:0x7120" type="code"/>
+    <symbol name="T3CON" address="IO:0x7121" type="code"/>
+    <symbol name="T3CNT" address="IO:0x7122" type="code"/>
+    <symbol name="T3CMPR" address="IO:0x7123" type="code"/>
+    <symbol name="T3PR" address="IO:0x7124" type="code"/>
+    <symbol name="T4CON" address="IO:0x7125" type="code"/>
+    <symbol name="T4CNT" address="IO:0x7126" type="code"/>
+    <symbol name="T4CMPR" address="IO:0x7127" type="code"/>
+    <symbol name="T4PR" address="IO:0x7128" type="code"/>
   </default_symbols>
 
   <default_memory_blocks>
